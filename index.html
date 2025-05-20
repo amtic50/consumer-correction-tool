@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Consumer Correction Tool</title>
   <style>
     body {
@@ -37,16 +37,16 @@
   <h2>Consumer Correction Message Generator</h2>
 
   <label>PU Number:</label>
-  <input type="text" id="pu" placeholder="e.g., PU2969791">
+  <input type="text" id="pu" placeholder="e.g., PU2969791" />
 
   <label>Correct Consumer Number:</label>
-  <input type="text" id="correctCons" placeholder="e.g., 040000058524">
+  <input type="text" id="correctCons" placeholder="e.g., 040000058524" />
 
   <label>Wrongly Updated Consumer Number:</label>
-  <input type="text" id="wrongCons" placeholder="e.g., 040000058527">
+  <input type="text" id="wrongCons" placeholder="e.g., 040000058527" />
 
   <label>Old Meter Number (still installed):</label>
-  <input type="text" id="oldMeter" placeholder="e.g., 3126391">
+  <input type="text" id="oldMeter" placeholder="e.g., 3126391" />
 
   <button onclick="generateMessage()">Generate Message</button>
 
@@ -68,7 +68,7 @@
       const wrong = document.getElementById("wrongCons").value.trim();
       const oldMeter = document.getElementById("oldMeter").value.trim();
 
-      const msg = `${pu} is connected to consumer number ${correct}, but was mistakenly updated to ${wrong}. In ${wrong}, the old meter (${oldMeter}) is still installed. Kindly rectify the linkage.`;
+      const msg = `${pu} was originally installed under Consumer No. ${correct} but has been erroneously updated to Consumer No. ${wrong}. Kindly note that the old meter (${oldMeter}) is still installed under Consumer No. ${wrong}. Requesting necessary correction at the earliest to avoid discrepancies.`;
 
       document.getElementById("output").value = msg;
     }
@@ -89,7 +89,7 @@
 
       fetch(endpoint, {
         method: "POST",
-        mode: "no-cors", // Use no-cors to avoid CORS errors
+        mode: "no-cors",
         headers: {
           "Content-Type": "application/json"
         },
