@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Consumer Correction Tool</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    textarea, input, button {
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px;
+      font-size: 14px;
+    }
+    .output {
+      background: #fff;
+      padding: 10px;
+      border: 1px solid #ddd;
+      margin-top: 10px;
+    }
+    .saved-messages {
+      margin-top: 20px;
+    }
+    .message {
+      background: #e9f7ef;
+      border-left: 4px solid #2ecc71;
+      padding: 10px;
+      margin-bottom: 5px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Consumer Correction Message Generator</h2>
+
+  <label>PU Number:</label>
+  <input type="text" id="pu" placeholder="e.g., PU2969791">
+
+  <label>Correct Consumer Number:</label>
+  <input type="text" id="correctCons" placeholder="e.g., 040000058524">
+
+  <label>Wrongly Updated Consumer Number:</label>
+  <input type="text" id="wrongCons" placeholder="e.g., 040000058527">
+
+  <label>Old Meter Number (still installed):</label>
+  <input type="text" id="oldMeter" placeholder="e.g., 3126391">
+
+  <button onclick="generateMessage()">Generate Message</button>
+
+  <textarea id="output" rows="6" readonly placeholder="Generated message will appear here"></textarea>
+  <button onclick="copyMessage()">📋 Copy Message</button>
+  <button onclick="saveMessage()">💾 Save Message</button>
+
+  <div class="saved-messages">
+    <h3>✅ Saved Messages</h3>
+    <div id="messageList"></div>
+  </div>
+
+  <script>
+    const endpoint = "https://script.google.com/macros/s/AKfycbw6s9DeLK4oAYAjILCBOQGM6ap8mXwaoEsz6vm52WhnsjSjJbZf_Twyh-6D7_fuanqu/exec"; // Replace with your actual URL
+
+    function generateMessage() {
+      const pu = document.getElementById("pu").value.trim();
+      const correct = document.getElementById("correctCons").value.trim();
+      const wrong = document.getElementById("wrongCons").value.trim();
+      const oldMeter = document.getElementById("oldMeter").value.trim();
+
+      const msg = `${pu} is connected to consumer number ${correct}, but was mistakenly updated to ${wrong}. In ${wrong}, the old meter (${oldMeter}) is still installed. Kindly rectify the linkage.`;
+
+      document.getElementById("output").value = msg;
+    }
+
+    function copyMessage() {
+      const output = document.getElementById("output");
+      output.select();
+      document.execCommand("copy");
+      alert("Message copied to clipboard!");
+    }
+
+    function saveMessage() {
+      const message = document.getElementById("output").value.trim();
+      if (!message) {
+        alert("Please generate a message before saving.");
+        return;
+      }
+
+      fetch(endpoint, {
+        method: "POST",
+        mode: "no-cors", // Use no-cors to avoid CORS errors
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ message })
+      })
+      .then(() => {
+        alert("Message sent! Check your Google Sheet.");
+        addToSavedMessages(message);
+      })
+      .catch(err => {
+        alert("Error: " + err.message);
+      });
+    }
+
+    function addToSavedMessages(msg) {
+      const div = document.createElement("div");
+      div.className = "message";
+      div.textContent = msg;
+      document.getElementById("messageList").prepend(div);
+    }
+  </script>
+
+</body>
+</html>
