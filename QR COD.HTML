@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Batch QR Code Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 30px;
+            text-align: center;
+        }
+        textarea {
+            width: 90%;
+            height: 150px;
+            font-size: 16px;
+            padding: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+        .qr-container {
+            margin-top: 30px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+        }
+        .qr-box {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Batch QR Code Generator</h1>
+    <p>Paste each item (e.g. URL or text) on a new line below:</p>
+    <textarea id="batchInput" placeholder="One item per line"></textarea><br>
+    <button onclick="generateBatchQRCodes()">Generate QR Codes</button>
+
+    <div class="qr-container" id="qrContainer"></div>
+
+    <script>
+        function generateBatchQRCodes() {
+            const input = document.getElementById('batchInput').value.trim();
+            const lines = input.split('\n').map(line => line.trim()).filter(line => line);
+            const qrContainer = document.getElementById('qrContainer');
+            qrContainer.innerHTML = '';
+
+            lines.forEach((text, index) => {
+                const qrBox = document.createElement('div');
+                qrBox.className = 'qr-box';
+
+                const label = document.createElement('div');
+                label.textContent = `#${index + 1}: ${text}`;
+                label.style.marginBottom = '5px';
+
+                const qrDiv = document.createElement('div');
+                qrBox.appendChild(label);
+                qrBox.appendChild(qrDiv);
+                qrContainer.appendChild(qrBox);
+
+                new QRCode(qrDiv, {
+                    text: text,
+                    width: 150,
+                    height: 150,
+                    correctLevel: QRCode.CorrectLevel.H
+                });
+            });
+        }
+    </script>
+
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>JSON to CSV Preview & Download</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+    th { background-color: #f4f4f4; }
+    textarea { width: 100%; height: 200px; }
+    button { margin-top: 10px; padding: 10px 20px; }
+  </style>
+</head>
+<body>
+
+<h2>JSON to CSV Converter with Preview</h2>
+
+<p>Paste your JSON here:</p>
+<textarea id="jsonInput"></textarea>
+<br>
+<button onclick="convertToTable()">Preview Table</button>
+<button onclick="downloadCSV()">Download CSV</button>
+
+<div id="tableContainer"></div>
+
+<script>
+  let currentData = [];
+
+  function convertToTable() {
+    const raw = document.getElementById('jsonInput').value;
+    try {
+      const obj = JSON.parse(raw);
+      if (!Array.isArray(obj.list)) throw new Error("JSON must contain a 'list' array.");
+
+      currentData = obj.list;
+
+      const container = document.getElementById('tableContainer');
+      const headers = ['Latitude', 'Longitude', 'ID', 'Name', 'Location', 'Reference Code'];
+
+      let table = '<table><thead><tr>' +
+                  headers.map(h => `<th>${h}</th>`).join('') +
+                  '</tr></thead><tbody>';
+
+      currentData.forEach(row => {
+        table += '<tr>' + row.map(col => `<td>${col}</td>`).join('') + '</tr>';
+      });
+
+      table += '</tbody></table>';
+      container.innerHTML = table;
+    } catch (err) {
+      alert("Invalid JSON: " + err.message);
+    }
+  }
+
+  function downloadCSV() {
+    if (currentData.length === 0) {
+      alert("No data to download. Please preview the table first.");
+      return;
+    }
+
+    const headers = ['Latitude', 'Longitude', 'ID', 'Name', 'Location', 'Reference Code'];
+    let csv = headers.join(',') + '\n';
+
+    currentData.forEach(row => {
+      csv += row.map(col => `"${col}"`).join(',') + '\n';
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'data.csv';
+    link.click();
+  }
+</script>
+
+</body>
+</html>
