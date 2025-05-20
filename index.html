@@ -87,17 +87,23 @@
         return;
       }
 
+      const incidentNo = prompt("Please enter the Incident Number:");
+      if (!incidentNo || !incidentNo.trim()) {
+        alert("Incident Number is required to save the message.");
+        return;
+      }
+
       fetch(endpoint, {
         method: "POST",
         mode: "no-cors",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ message })
+        body: JSON.stringify({ message, incidentNo: incidentNo.trim() })
       })
       .then(() => {
-        alert("Message sent! Check your Google Sheet.");
-        addToSavedMessages(message);
+        alert("Message and Incident Number sent! Check your Google Sheet.");
+        addToSavedMessages(`Incident No: ${incidentNo.trim()} — ${message}`);
       })
       .catch(err => {
         alert("Error: " + err.message);
