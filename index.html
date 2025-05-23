@@ -60,7 +60,7 @@
   </div>
 
   <script>
-    const endpoint = "https://script.google.com/macros/s/AKfycbw6s9DeLK4oAYAjILCBOQGM6ap8mXwaoEsz6vm52WhnsjSjJbZf_Twyh-6D7_fuanqu/exec"; // Replace with your actual URL
+    const endpoint = "https://script.google.com/macros/s/AKfycbwP4hEGi4P9kljRsf-B7Eop3hVF9DzdbjbA1zvZxfTPedWDfmpTGjoyAw9vcgSo4zG2/exec"; // Replace this
 
     function generateMessage() {
       const pu = document.getElementById("pu").value.trim();
@@ -94,22 +94,24 @@
       }
 
       fetch(endpoint, {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json"
-  },
-  body: JSON.stringify({ message, incidentNo: incidentNo.trim() })
-})
-.then(res => res.json())
-.then(data => {
-  console.log(data);
-  alert("Message and Incident Number sent! Check your Google Sheet.");
-  addToSavedMessages(`Incident No: ${incidentNo.trim()} — ${message}`);
-})
-.catch(err => {
-  alert("Error: " + err.message);
-});
-
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ message, incidentNo: incidentNo.trim() })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.result === "Success") {
+          alert("✅ Message and Incident Number saved to Google Sheet!");
+          addToSavedMessages(`Incident No: ${incidentNo.trim()} — ${message}`);
+        } else {
+          alert("❌ Error: " + data.message);
+        }
+      })
+      .catch(err => {
+        alert("Error: " + err.message);
+      });
     }
 
     function addToSavedMessages(msg) {
