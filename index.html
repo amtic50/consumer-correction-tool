@@ -2,148 +2,65 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Consumer Correction Tool</title>
-  <script src="https://cdn.tailwindcss.com"></script>
   <style>
     body {
-      font-family: 'Inter', sans-serif; /* Tailwind default is good, Inter is a nice choice too */
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f5f5f5;
     }
-    /* Custom modal styles */
-    .modal {
-      transition: opacity 0.25s ease;
+    textarea, input, button {
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px;
+      font-size: 14px;
     }
-    .modal-active {
-      overflow-x: hidden;
-      overflow-y: auto;
+    .output {
+      background: #fff;
+      padding: 10px;
+      border: 1px solid #ddd;
+      margin-top: 10px;
     }
-    .toast {
-      position: fixed;
-      bottom: 20px;
-      right: 20px;
-      padding: 1rem 1.5rem;
-      border-radius: 0.5rem;
-      color: white;
-      font-weight: 600;
-      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-      opacity: 0;
-      transform: translateY(20px);
-      transition: opacity 0.3s ease-out, transform 0.3s ease-out;
-      z-index: 1000;
+    .saved-messages {
+      margin-top: 20px;
     }
-    .toast-success {
-      background-color: #2ecc71; /* Green */
-    }
-    .toast-error {
-      background-color: #e74c3c; /* Red */
-    }
-    .toast-visible {
-      opacity: 1;
-      transform: translateY(0);
+    .message {
+      background: #e9f7ef;
+      border-left: 4px solid #2ecc71;
+      padding: 10px;
+      margin-bottom: 5px;
     }
   </style>
 </head>
-<body class="bg-gray-100 min-h-screen flex flex-col items-center py-8 px-4">
+<body>
 
-  <div class="bg-white p-6 sm:p-8 rounded-lg shadow-xl w-full max-w-2xl">
-    <h2 class="text-2xl sm:text-3xl font-bold text-center text-gray-700 mb-6 sm:mb-8">Consumer Correction Message Generator</h2>
+  <h2>Consumer Correction Message Generator</h2>
 
-    <div class="space-y-4">
-      <div>
-        <label for="pu" class="block text-sm font-medium text-gray-700">PU Number:</label>
-        <input type="text" id="pu" placeholder="e.g., PU2969791" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-      </div>
+  <label>PU Number:</label>
+  <input type="text" id="pu" placeholder="e.g., PU2969791" />
 
-      <div>
-        <label for="correctCons" class="block text-sm font-medium text-gray-700">Correct Consumer Number:</label>
-        <input type="text" id="correctCons" placeholder="e.g., 040000058524" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-      </div>
+  <label>Correct Consumer Number:</label>
+  <input type="text" id="correctCons" placeholder="e.g., 040000058524" />
 
-      <div>
-        <label for="wrongCons" class="block text-sm font-medium text-gray-700">Wrongly Updated Consumer Number:</label>
-        <input type="text" id="wrongCons" placeholder="e.g., 040000058527" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-      </div>
+  <label>Wrongly Updated Consumer Number:</label>
+  <input type="text" id="wrongCons" placeholder="e.g., 040000058527" />
 
-      <div>
-        <label for="oldMeter" class="block text-sm font-medium text-gray-700">Old Meter Number (still installed):</label>
-        <input type="text" id="oldMeter" placeholder="e.g., 3126391" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" />
-      </div>
-    </div>
+  <label>Old Meter Number (still installed):</label>
+  <input type="text" id="oldMeter" placeholder="e.g., 3126391" />
 
-    <button onclick="generateMessage()" class="mt-6 w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-4 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out">
-      Generate Message
-    </button>
+  <button onclick="generateMessage()">Generate Message</button>
 
-    <div class="mt-6">
-      <label for="output" class="block text-sm font-medium text-gray-700">Generated Message:</label>
-      <textarea id="output" rows="6" readonly placeholder="Generated message will appear here" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 sm:text-sm"></textarea>
-    </div>
+  <textarea id="output" rows="6" readonly placeholder="Generated message will appear here"></textarea>
+  <button onclick="copyMessage()">📋 Copy Message</button>
+  <button onclick="saveMessage()">💾 Save Message</button>
 
-    <div class="mt-4 flex flex-col sm:flex-row sm:space-x-3 space-y-2 sm:space-y-0">
-      <button onclick="copyMessage()" class="w-full sm:w-auto flex-1 bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-400 transition duration-150 ease-in-out">
-        📋 Copy Message
-      </button>
-      <button onclick="openSaveModal()" class="w-full sm:w-auto flex-1 bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-400 transition duration-150 ease-in-out">
-        💾 Save Message
-      </button>
-    </div>
-
-    <div class="saved-messages mt-8">
-      <h3 class="text-xl font-semibold text-gray-700 mb-3">✅ Saved Messages (Session Only)</h3>
-      <div id="messageList" class="space-y-2">
-        <p id="noMessagesText" class="text-gray-500">No messages saved yet in this session.</p>
-      </div>
-    </div>
+  <div class="saved-messages">
+    <h3>✅ Saved Messages</h3>
+    <div id="messageList"></div>
   </div>
-
-  <div id="saveModal" class="modal fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50 hidden">
-    <div class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
-      <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Enter Incident Number</h3>
-      <div>
-        <label for="incidentNoInput" class="block text-sm font-medium text-gray-700">Incident Number:</label>
-        <input type="text" id="incidentNoInput" placeholder="e.g., INC0012345" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm">
-      </div>
-      <div class="mt-5 sm:mt-6 sm:grid sm:grid-cols-2 sm:gap-3 sm:grid-flow-row-dense">
-        <button type="button" onclick="executeSaveMessage()" class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:col-start-2 sm:text-sm">
-          Save
-        </button>
-        <button type="button" onclick="closeSaveModal()" class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:col-start-1 sm:text-sm">
-          Cancel
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <div id="toastNotification" class="toast"></div>
 
   <script>
-    // ----------------------------------------------------------------------------------
-    // !!! CRITICAL CONFIGURATION !!!
-    // THE ERROR YOU ARE SEEING ("Google Apps Script endpoint is not configured") 
-    // IS BECAUSE THE LINE BELOW IS STILL A PLACEHOLDER.
-    //
-    // YOU MUST REPLACE "YOUR_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE_PLEASE_REPLACE_ME"
-    // WITH YOUR ACTUAL GOOGLE APPS SCRIPT WEB APP URL.
-    //
-    // How to get the URL:
-    // 1. Open your Google Apps Script project.
-    // 2. Click on "Deploy" -> "New deployment" (or "Manage deployments" if already deployed).
-    // 3. Ensure "Type" is "Web app".
-    // 4. Configure "Execute as" (usually "Me") and "Who has access" (usually "Anyone" or "Anyone, even anonymous").
-    // 5. Click "Deploy".
-    // 6. Copy the "Web app URL" (it ends with '/exec').
-    // 7. Paste that URL in place of the placeholder below.
-    //
-    // Example: const endpoint = "https://script.google.com/macros/s/ABCDEFG1234567/exec";
-    // ----------------------------------------------------------------------------------
-    const endpoint = "https://script.google.com/macros/s/AKfycbw6s9DeLK4oAYAjILCBOQGM6ap8mXwaoEsz6vm52WhnsjSjJbZf_Twyh-6D7_fuanqu/exec";
-
-    const outputTextarea = document.getElementById("output");
-    const messageListDiv = document.getElementById("messageList");
-    const noMessagesText = document.getElementById("noMessagesText");
-    const saveModal = document.getElementById("saveModal");
-    const incidentNoInput = document.getElementById("incidentNoInput");
-    const toastNotification = document.getElementById("toastNotification");
+    const endpoint = "https://script.google.com/macros/s/AKfycbw6s9DeLK4oAYAjILCBOQGM6ap8mXwaoEsz6vm52WhnsjSjJbZf_Twyh-6D7_fuanqu/exec"; // Replace with your actual URL
 
     function generateMessage() {
       const pu = document.getElementById("pu").value.trim();
@@ -151,179 +68,53 @@
       const wrong = document.getElementById("wrongCons").value.trim();
       const oldMeter = document.getElementById("oldMeter").value.trim();
 
-      if (!pu || !correct || !wrong || !oldMeter) {
-        showToast("Please fill in all fields to generate a message.", "error");
-        return;
-      }
-
       const msg = `${pu} was originally installed under Consumer No. ${correct} but has been erroneously updated to Consumer No. ${wrong}. Kindly note that the old meter (${oldMeter}) is still installed under Consumer No. ${wrong}. Requesting necessary correction at the earliest to avoid discrepancies.`;
-      outputTextarea.value = msg;
-      showToast("Message generated successfully!", "success");
+
+      document.getElementById("output").value = msg;
     }
 
     function copyMessage() {
-      if (!outputTextarea.value) {
-        showToast("Nothing to copy. Please generate a message first.", "error");
-        return;
-      }
-      outputTextarea.select();
-      // For modern browsers, navigator.clipboard is preferred, but execCommand is a fallback.
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(outputTextarea.value)
-          .then(() => showToast("Message copied to clipboard!", "success"))
-          .catch(err => {
-            console.error("Failed to copy with navigator.clipboard: ", err);
-            // Fallback to execCommand
-            try {
-              document.execCommand("copy");
-              showToast("Message copied to clipboard! (fallback method)", "success");
-            } catch (execErr) {
-              console.error("Failed to copy with execCommand: ", execErr);
-              showToast("Failed to copy message. Please copy manually.", "error");
-            }
-          });
-      } else {
-         // Fallback for older browsers or restricted environments
-        try {
-            outputTextarea.select();
-            document.execCommand("copy");
-            showToast("Message copied to clipboard! (fallback method)", "success");
-        } catch (err) {
-            console.error("Failed to copy with execCommand: ", err);
-            showToast("Failed to copy message. Please copy manually.", "error");
-        }
-      }
+      const output = document.getElementById("output");
+      output.select();
+      document.execCommand("copy");
+      alert("Message copied to clipboard!");
     }
 
-    function openSaveModal() {
-      const message = outputTextarea.value.trim();
+    function saveMessage() {
+      const message = document.getElementById("output").value.trim();
       if (!message) {
-        showToast("Please generate a message before saving.", "error");
-        return;
-      }
-      incidentNoInput.value = ""; // Clear previous input
-      saveModal.classList.remove("hidden");
-      document.body.classList.add("modal-active");
-    }
-
-    function closeSaveModal() {
-      saveModal.classList.add("hidden");
-      document.body.classList.remove("modal-active");
-    }
-
-    function executeSaveMessage() {
-      const message = outputTextarea.value.trim();
-      const incidentNo = incidentNoInput.value.trim();
-
-      if (!incidentNo) {
-        showToast("Incident Number is required to save the message.", "error", saveModal); // Show toast above modal
+        alert("Please generate a message before saving.");
         return;
       }
 
-      // This is where the error you reported is triggered if the endpoint is not configured.
-    
-      
-      const saveButton = saveModal.querySelector('button[onclick="executeSaveMessage()"]');
-      const cancelButton = saveModal.querySelector('button[onclick="closeSaveModal()"]');
-      const originalSaveButtonText = saveButton.innerHTML;
-      saveButton.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-      </svg>Saving...`;
-      saveButton.disabled = true;
-      cancelButton.disabled = true;
-
+      const incidentNo = prompt("Please enter the Incident Number:");
+      if (!incidentNo || !incidentNo.trim()) {
+        alert("Incident Number is required to save the message.");
+        return;
+      }
 
       fetch(endpoint, {
         method: "POST",
+        mode: "no-cors",
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify({ message, incidentNo })
+        body: JSON.stringify({ message, incidentNo: incidentNo.trim() })
       })
-      .then(response => {
-        if (!response.ok) {
-          return response.text().then(text => {
-            throw new Error(`Network response was not ok. Status: ${response.status}. Body: ${text}`);
-          });
-        }
-        return response.json();
-      })
-      .then(data => {
-        if (data.result === "Success") {
-          showToast("✅ Message and Incident Number saved to Google Sheet!", "success");
-          addToSavedMessagesLocally(`Incident No: ${incidentNo} — ${message}`);
-          closeSaveModal();
-        } else {
-          showToast(`❌ Error from script: ${data.message || 'Unknown error'}`, "error", saveModal);
-          console.error("Error from Google Apps Script:", data);
-        }
+      .then(() => {
+        alert("Message and Incident Number sent! Check your Google Sheet.");
+        addToSavedMessages(`Incident No: ${incidentNo.trim()} — ${message}`);
       })
       .catch(err => {
-        showToast(`Fetch Error: ${err.message}. Check console & script URL.`, "error", saveModal);
-        console.error("Error during fetch:", err);
-      })
-      .finally(() => {
-        saveButton.innerHTML = originalSaveButtonText;
-        saveButton.disabled = false;
-        cancelButton.disabled = false;
+        alert("Error: " + err.message);
       });
     }
 
-    function addToSavedMessagesLocally(msg) {
-      if (noMessagesText) {
-        noMessagesText.style.display = 'none'; // Hide "No messages" text
-      }
+    function addToSavedMessages(msg) {
       const div = document.createElement("div");
-      div.className = "bg-emerald-50 border-l-4 border-emerald-500 text-emerald-700 p-3 rounded-md shadow-sm text-sm";
+      div.className = "message";
       div.textContent = msg;
-      messageListDiv.prepend(div); // Add to the top
-    }
-
-    let toastTimeout;
-    function showToast(message, type = "success", contextElement = document.body) {
-      clearTimeout(toastTimeout);
-      toastNotification.textContent = message;
-      toastNotification.className = `toast toast-${type}`; 
-      
-      if (contextElement !== document.body && contextElement.classList.contains('modal')) {
-        toastNotification.style.position = 'absolute';
-        toastNotification.style.bottom = 'auto';
-        toastNotification.style.right = 'auto';
-        toastNotification.style.left = '50%';
-        toastNotification.style.top = '20px';
-        toastNotification.style.transform = 'translateX(-50%) translateY(0)';
-        contextElement.prepend(toastNotification); 
-      } else {
-        toastNotification.style.position = 'fixed';
-        toastNotification.style.bottom = '20px';
-        toastNotification.style.right = '20px';
-        toastNotification.style.left = 'auto';
-        toastNotification.style.top = 'auto';
-        toastNotification.style.transform = 'translateY(20px)';
-        document.body.appendChild(toastNotification); 
-      }
-
-      requestAnimationFrame(() => {
-        toastNotification.classList.add("toast-visible");
-      });
-
-      toastTimeout = setTimeout(() => {
-        toastNotification.classList.remove("toast-visible");
-        if (toastNotification.style.position === 'absolute') {
-            setTimeout(() => {
-                if (toastNotification.parentNode === contextElement) {
-                    contextElement.removeChild(toastNotification);
-                }
-            }, 300); 
-        }
-      }, type === "error" ? 6000 : 4000); // Longer display for errors, and slightly longer for success as well
-    }
-
-    if (messageListDiv.children.length === 1 && messageListDiv.firstChild.id === 'noMessagesText') {
-        // Only "No messages" text is present
-    } else if (messageListDiv.children.length === 0) {
-        if(noMessagesText) noMessagesText.style.display = 'block';
+      document.getElementById("messageList").prepend(div);
     }
   </script>
 
