@@ -221,11 +221,7 @@
       }
 
       // This is where the error you reported is triggered if the endpoint is not configured.
-      if (endpoint === "https://script.google.com/macros/s/AKfycbwP4hEGi4P9kljRsf-B7Eop3hVF9DzdbjbA1zvZxfTPedWDfmpTGjoyAw9vcgSo4zG2/exec") {
-        showToast("Error: Google Apps Script URL is not configured in the HTML. Please see the comments in the script section.", "error", saveModal);
-        console.error("Google Apps Script endpoint is not configured. Please update the 'endpoint' variable in the script section of this HTML file with your deployed Google Apps Script URL.");
-        return;
-      }
+    
       
       const saveButton = saveModal.querySelector('button[onclick="executeSaveMessage()"]');
       const cancelButton = saveModal.querySelector('button[onclick="closeSaveModal()"]');
