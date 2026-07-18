@@ -60,7 +60,7 @@
   </div>
 
   <script>
-    const endpoint = "https://script.google.com/macros/s/AKfycbw6s9DeLK4oAYAjILCBOQGM6ap8mXwaoEsz6vm52WhnsjSjJbZf_Twyh-6D7_fuanqu/exec"; // Replace with your actual URL
+    const endpoint = "https://script.google.com/macros/s/AKfycbwP4hEGi4P9kljRsf-B7Eop3hVF9DzdbjbA1zvZxfTPedWDfmpTGjoyAw9vcgSo4zG2/exec"; // Replace with your actual URL
 
     function generateMessage() {
       const pu = document.getElementById("pu").value.trim();
@@ -95,15 +95,19 @@
 
       fetch(endpoint, {
         method: "POST",
-        mode: "no-cors",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "text/plain;charset=utf-8"
         },
         body: JSON.stringify({ message, incidentNo: incidentNo.trim() })
       })
-      .then(() => {
-        alert("Message and Incident Number sent! Check your Google Sheet.");
-        addToSavedMessages(`Incident No: ${incidentNo.trim()} — ${message}`);
+      .then(res => res.json())
+      .then(data => {
+        if (data.result === "Success") {
+          alert("Message and Incident Number sent! Check your Google Sheet.");
+          addToSavedMessages(`Incident No: ${incidentNo.trim()} — ${message}`);
+        } else {
+          alert("Server error: " + (data.message || "Unknown error"));
+        }
       })
       .catch(err => {
         alert("Error: " + err.message);
