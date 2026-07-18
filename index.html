@@ -8,12 +8,15 @@
       font-family: Arial, sans-serif;
       padding: 20px;
       background: #f5f5f5;
+      max-width: 900px;
+      margin: 0 auto;
     }
-    textarea, input, button {
+    textarea, input, button, select {
       width: 100%;
       margin-top: 10px;
       padding: 10px;
       font-size: 14px;
+      box-sizing: border-box;
     }
     .output {
       background: #fff;
@@ -21,47 +24,177 @@
       border: 1px solid #ddd;
       margin-top: 10px;
     }
-    .saved-messages {
-      margin-top: 20px;
-    }
+    .saved-messages { margin-top: 20px; }
     .message {
       background: #e9f7ef;
       border-left: 4px solid #2ecc71;
       padding: 10px;
       margin-bottom: 5px;
+      white-space: pre-wrap;
     }
+    .error-box {
+      background: #fdecea;
+      border-left: 4px solid #e74c3c;
+      padding: 10px;
+      margin-top: 10px;
+    }
+    h2, h3 { margin-top: 25px; }
+    hr { margin: 30px 0; border: none; border-top: 2px solid #ddd; }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      margin-bottom: 20px;
+      border-bottom: 2px solid #ddd;
+    }
+    .tab-btn {
+      width: auto;
+      flex: 1;
+      background: #eee;
+      border: none;
+      padding: 12px;
+      cursor: pointer;
+      font-weight: bold;
+      margin: 0;
+    }
+    .tab-btn.active {
+      background: #2ecc71;
+      color: #fff;
+    }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Bulk paste results */
+    .bulk-row {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 10px;
+      margin-top: 10px;
+    }
+    .bulk-row.no-meter { border-left: 4px solid #f39c12; }
+    .bulk-row textarea { min-height: 70px; }
+    .bulk-row-meta {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 6px;
+    }
+    .bulk-row-meta label { display: flex; align-items: center; gap: 5px; font-size: 13px; width: auto; }
+    .bulk-row-meta input[type="text"] { width: 160px; margin-top: 0; }
+    .bulk-row-meta input[type="checkbox"] { width: auto; margin-top: 0; }
+    small { color: #666; display: block; margin-top: 4px; }
   </style>
 </head>
 <body>
 
-  <h2>Consumer Correction Message Generator</h2>
+  <h1>Consumer Correction Tool</h1>
 
-  <label>PU Number:</label>
-  <input type="text" id="pu" placeholder="e.g., PU2969791" />
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('correction')">Meter Correction</button>
+    <button class="tab-btn" onclick="switchTab('dc')">DC Exemption</button>
+  </div>
 
-  <label>Correct Consumer Number:</label>
-  <input type="text" id="correctCons" placeholder="e.g., 040000058524" />
+  <!-- ===================== TAB 1: METER CORRECTION ===================== -->
+  <div id="tab-correction" class="tab-content active">
 
-  <label>Wrongly Updated Consumer Number:</label>
-  <input type="text" id="wrongCons" placeholder="e.g., 040000058527" />
+    <h2>Single Message</h2>
 
-  <label>Old Meter Number (still installed):</label>
-  <input type="text" id="oldMeter" placeholder="e.g., 3126391" />
+    <label>PU Number (Correct Meter):</label>
+    <input type="text" id="pu" placeholder="e.g., PU2969791" />
 
-  <button onclick="generateMessage()">Generate Message</button>
+    <label>Correct Consumer Number:</label>
+    <input type="text" id="correctCons" placeholder="e.g., 040000058524" />
 
-  <textarea id="output" rows="6" readonly placeholder="Generated message will appear here"></textarea>
-  <button onclick="copyMessage()">📋 Copy Message</button>
-  <button onclick="saveMessage()">💾 Save Message</button>
+    <label>Wrongly Updated Consumer Number:</label>
+    <input type="text" id="wrongCons" placeholder="e.g., 040000058527" />
 
-  <div class="saved-messages">
-    <h3>✅ Saved Messages</h3>
-    <div id="messageList"></div>
+    <label>Old Meter Number (still installed):</label>
+    <input type="text" id="oldMeter" placeholder="e.g., 3126391" />
+
+    <button onclick="generateMessage()">Generate Message</button>
+
+    <textarea id="output" rows="6" readonly placeholder="Generated message will appear here"></textarea>
+    <button onclick="copyMessage()">📋 Copy Message</button>
+    <button onclick="saveMessage()">💾 Save Message</button>
+
+    <hr/>
+
+    <h2>Bulk Paste</h2>
+    <small>
+      Paste data copied from Excel/Sheets, <b>including the header row</b>. Recognized header words:
+      Correct Consumer, Wrong Consumer, Correct Meter, Wrong Meter, Incident no., Sub-Div, Slr No.
+      Missing columns are fine — just leave them out or leave cells blank.<br/>
+      To mark "no smart meter installed", type <b>NA</b> / <b>no meter</b> / <b>nil</b> in the Correct Meter cell for that row.
+    </small>
+    <textarea id="bulkInput" rows="8" placeholder="Paste header row + data rows here..."></textarea>
+    <button onclick="parseBulk()">🔍 Parse Pasted Data</button>
+    <div id="bulkError"></div>
+
+    <div id="bulkResultsWrap" style="display:none;">
+      <h3>Parsed Messages</h3>
+      <label>Incident No. (used for rows without their own):</label>
+      <input type="text" id="bulkIncidentNo" placeholder="e.g., INC12345" />
+      <div id="bulkResults"></div>
+      <button onclick="saveBulkSelected()">💾 Save Selected Messages</button>
+    </div>
+
+    <div class="saved-messages">
+      <h3>✅ Saved Messages</h3>
+      <div id="messageList"></div>
+    </div>
+  </div>
+
+  <!-- ===================== TAB 2: DC EXEMPTION ===================== -->
+  <div id="tab-dc" class="tab-content">
+    <h2>DC Exemption Message Generator</h2>
+
+    <label>Consumer No.:</label>
+    <input type="text" id="dcConsumer" placeholder="e.g., 040000058524" />
+
+    <label>No. of Days Required (max 30):</label>
+    <input type="number" id="dcDays" min="1" max="30" value="7" />
+
+    <label>From Date:</label>
+    <input type="date" id="dcDate" />
+
+    <label>Incident No.:</label>
+    <input type="text" id="dcIncidentNo" placeholder="e.g., INC12345" />
+
+    <button onclick="generateDcMessage()">Generate Message</button>
+
+    <textarea id="dcOutput" rows="6" readonly placeholder="Generated message will appear here"></textarea>
+    <button onclick="copyDcMessage()">📋 Copy Message</button>
+    <button onclick="saveDcMessage()">💾 Save Message</button>
+
+    <div class="saved-messages">
+      <h3>✅ Saved DC Exemption Messages</h3>
+      <div id="dcMessageList"></div>
+    </div>
   </div>
 
   <script>
-    const endpoint = "https://script.google.com/macros/s/AKfycbyZdsyAk8qFRZQ13WEfVQL_Fsq05TtL9NaBTi3Jo-wo2f8TwS7qMBUzYlflANesFPN3/exec"; // Replace with your actual URL
+    const endpoint = "https://script.google.com/macros/s/AKfycbyv4obgvyNyDpKaN0yofCEo4ERqiW4QCapgLscno74oSPE1fGViPsvSpfjV0760abh4/exec"; // Replace with your deployed URL
 
+    // ---------- Tabs ----------
+    function switchTab(name) {
+      document.getElementById('tab-correction').classList.toggle('active', name === 'correction');
+      document.getElementById('tab-dc').classList.toggle('active', name === 'dc');
+      document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
+        btn.classList.toggle('active', (idx === 0 && name === 'correction') || (idx === 1 && name === 'dc'));
+      });
+    }
+
+    // ---------- Shared save helper ----------
+    function postToSheet(payload) {
+      return fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "text/plain;charset=utf-8" },
+        body: JSON.stringify(payload)
+      }).then(res => res.json());
+    }
+
+    // ---------- Single message (Meter Correction) ----------
     function generateMessage() {
       const pu = document.getElementById("pu").value.trim();
       const correct = document.getElementById("correctCons").value.trim();
@@ -86,39 +219,244 @@
         alert("Please generate a message before saving.");
         return;
       }
-
       const incidentNo = prompt("Please enter the Incident Number:");
       if (!incidentNo || !incidentNo.trim()) {
         alert("Incident Number is required to save the message.");
         return;
       }
+      postToSheet({ type: "correction", message, incidentNo: incidentNo.trim() })
+        .then(data => {
+          if (data.result === "Success") {
+            alert("Message saved! Check your Google Sheet.");
+            addToList("messageList", `Incident No: ${incidentNo.trim()} — ${message}`);
+          } else {
+            alert("Server error: " + (data.message || "Unknown error"));
+          }
+        })
+        .catch(err => alert("Error: " + err.message));
+    }
 
-      fetch(endpoint, {
-        method: "POST",
-        headers: {
-          "Content-Type": "text/plain;charset=utf-8"
-        },
-        body: JSON.stringify({ message, incidentNo: incidentNo.trim() })
+    function addToList(listId, text) {
+      const div = document.createElement("div");
+      div.className = "message";
+      div.textContent = text;
+      document.getElementById(listId).prepend(div);
+    }
+
+    // ---------- Bulk paste ----------
+    let bulkRecords = [];
+
+    function detectColumns(headerLine) {
+      const cols = headerLine.split("\t").map(h => h.trim().toLowerCase());
+      return cols.map(h => {
+        if (h.includes("slr")) return "slrNo";
+        if (h.includes("sub")) return "subDiv";
+        if (h.includes("correct") && h.includes("consumer")) return "correctCons";
+        if (h.includes("wrong") && h.includes("consumer")) return "wrongCons";
+        if (h.includes("correct") && h.includes("meter")) return "correctMeter";
+        if (h.includes("wrong") && h.includes("meter")) return "wrongMeter";
+        if (h.includes("incident")) return "incidentNo";
+        return "ignore";
+      });
+    }
+
+    function isNoMeterKeyword(value) {
+      if (!value) return false;
+      const v = value.trim().toLowerCase();
+      return ["na", "n/a", "no meter", "nil", "none", "-"].includes(v);
+    }
+
+    function buildMessageForRecord(rec) {
+      const correctCons = rec.correctCons || "";
+      const wrongCons = rec.wrongCons || "";
+      const correctMeter = rec.correctMeter || "";
+      const wrongMeter = rec.wrongMeter || "";
+
+      if (isNoMeterKeyword(correctMeter)) {
+        return {
+          noMeter: true,
+          text: `No smart meter is installed for Consumer No. ${correctCons}. Kindly arrange installation/tagging of a smart meter at the earliest.`
+        };
+      }
+
+      let msg = `${correctMeter} was originally installed under Consumer No. ${correctCons}`;
+      msg += wrongCons ? ` but has been erroneously updated to Consumer No. ${wrongCons}.` : `.`;
+
+      if (wrongMeter && !isNoMeterKeyword(wrongMeter)) {
+        msg += ` Kindly note that the old meter (${wrongMeter}) is still installed under Consumer No. ${wrongCons || correctCons}.`;
+      }
+      msg += ` Requesting necessary correction at the earliest to avoid discrepancies.`;
+      return { noMeter: false, text: msg };
+    }
+
+    function parseBulk() {
+      const errorDiv = document.getElementById("bulkError");
+      errorDiv.innerHTML = "";
+      document.getElementById("bulkResultsWrap").style.display = "none";
+
+      const raw = document.getElementById("bulkInput").value;
+      const lines = raw.split("\n").map(l => l.replace("\r", "")).filter(l => l.trim() !== "");
+
+      if (lines.length < 2) {
+        errorDiv.innerHTML = `<div class="error-box">Paste a header row plus at least one data row.</div>`;
+        return;
+      }
+
+      const colMap = detectColumns(lines[0]);
+      if (!colMap.includes("correctCons")) {
+        errorDiv.innerHTML = `<div class="error-box">Couldn't find a "Correct Consumer" column in the header row. Please check the header names and try again.</div>`;
+        return;
+      }
+
+      bulkRecords = [];
+      for (let i = 1; i < lines.length; i++) {
+        const cells = lines[i].split("\t");
+        const rec = {};
+        colMap.forEach((key, idx) => {
+          if (key === "ignore") return;
+          rec[key] = (cells[idx] || "").trim();
+        });
+        if (!rec.correctCons) continue; // skip empty/junk rows
+        const built = buildMessageForRecord(rec);
+        bulkRecords.push({
+          incidentNo: rec.incidentNo || "",
+          text: built.text,
+          noMeter: built.noMeter,
+          selected: true
+        });
+      }
+
+      if (bulkRecords.length === 0) {
+        errorDiv.innerHTML = `<div class="error-box">No valid rows found. Make sure "Correct Consumer" has a value in each data row.</div>`;
+        return;
+      }
+
+      renderBulkResults();
+      document.getElementById("bulkResultsWrap").style.display = "block";
+    }
+
+    function renderBulkResults() {
+      const wrap = document.getElementById("bulkResults");
+      wrap.innerHTML = "";
+      bulkRecords.forEach((rec, idx) => {
+        const div = document.createElement("div");
+        div.className = "bulk-row" + (rec.noMeter ? " no-meter" : "");
+        div.innerHTML = `
+          <textarea onchange="bulkRecords[${idx}].text=this.value">${rec.text}</textarea>
+          <div class="bulk-row-meta">
+            <label><input type="checkbox" ${rec.selected ? "checked" : ""} onchange="bulkRecords[${idx}].selected=this.checked" /> Include</label>
+            <input type="text" placeholder="Incident No. (optional, else uses field above)" value="${rec.incidentNo}" onchange="bulkRecords[${idx}].incidentNo=this.value" />
+          </div>
+        `;
+        wrap.appendChild(div);
+      });
+    }
+
+    async function saveBulkSelected() {
+      const fallbackIncident = document.getElementById("bulkIncidentNo").value.trim();
+      const toSave = bulkRecords.filter(r => r.selected);
+
+      if (toSave.length === 0) {
+        alert("No rows selected.");
+        return;
+      }
+
+      let successCount = 0;
+      let failCount = 0;
+
+      for (const rec of toSave) {
+        const incidentNo = (rec.incidentNo || fallbackIncident).trim();
+        if (!incidentNo) {
+          failCount++;
+          continue;
+        }
+        try {
+          const data = await postToSheet({ type: "correction", message: rec.text, incidentNo });
+          if (data.result === "Success") {
+            successCount++;
+            addToList("messageList", `Incident No: ${incidentNo} — ${rec.text}`);
+          } else {
+            failCount++;
+          }
+        } catch (e) {
+          failCount++;
+        }
+      }
+
+      alert(`Saved: ${successCount}. Failed: ${failCount}${failCount > 0 ? " (check that every row has an Incident No.)" : ""}.`);
+    }
+
+    // ---------- DC Exemption ----------
+    // Default the date picker to today
+    document.getElementById("dcDate").value = new Date().toISOString().split("T")[0];
+
+    function formatDate(d) {
+      return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+    }
+
+    function generateDcMessage() {
+      const consumerNo = document.getElementById("dcConsumer").value.trim();
+      let days = parseInt(document.getElementById("dcDays").value, 10);
+      const fromDateStr = document.getElementById("dcDate").value;
+
+      if (!consumerNo) { alert("Please enter Consumer No."); return; }
+      if (!fromDateStr) { alert("Please select a From Date."); return; }
+      if (isNaN(days) || days < 1) days = 1;
+      if (days > 30) {
+        days = 30;
+        document.getElementById("dcDays").value = 30;
+        alert("Max DC exemption is 30 days — capped to 30.");
+      }
+
+      const fromDate = new Date(fromDateStr + "T00:00:00");
+      const toDate = new Date(fromDate);
+      toDate.setDate(toDate.getDate() + (days - 1));
+
+      const msg = `Requesting DC (Disconnection) exemption for Consumer No. ${consumerNo} for ${days} day(s), effective from ${formatDate(fromDate)} to ${formatDate(toDate)}. Kindly grant the exemption to avoid disconnection.`;
+
+      document.getElementById("dcOutput").value = msg;
+    }
+
+    function copyDcMessage() {
+      const output = document.getElementById("dcOutput");
+      output.select();
+      document.execCommand("copy");
+      alert("Message copied to clipboard!");
+    }
+
+    function saveDcMessage() {
+      const message = document.getElementById("dcOutput").value.trim();
+      if (!message) {
+        alert("Please generate a message before saving.");
+        return;
+      }
+      const consumerNo = document.getElementById("dcConsumer").value.trim();
+      const days = document.getElementById("dcDays").value;
+      const fromDate = document.getElementById("dcDate").value;
+      const incidentNo = document.getElementById("dcIncidentNo").value.trim();
+
+      if (!incidentNo) {
+        alert("Please enter an Incident Number.");
+        return;
+      }
+
+      postToSheet({
+        type: "dc_exemption",
+        consumerNo,
+        days,
+        fromDate,
+        incidentNo,
+        message
       })
-      .then(res => res.json())
       .then(data => {
         if (data.result === "Success") {
-          alert("Message and Incident Number sent! Check your Google Sheet.");
-          addToSavedMessages(`Incident No: ${incidentNo.trim()} — ${message}`);
+          alert("DC Exemption message saved! Check the DC_Exemption sheet tab.");
+          addToList("dcMessageList", `Incident No: ${incidentNo} — ${message}`);
         } else {
           alert("Server error: " + (data.message || "Unknown error"));
         }
       })
-      .catch(err => {
-        alert("Error: " + err.message);
-      });
-    }
-
-    function addToSavedMessages(msg) {
-      const div = document.createElement("div");
-      div.className = "message";
-      div.textContent = msg;
-      document.getElementById("messageList").prepend(div);
+      .catch(err => alert("Error: " + err.message));
     }
   </script>
 
