@@ -1,552 +1,735 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Consumer Correction Tool</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
-      background: #f5f5f5;
-      max-width: 900px;
-      margin: 0 auto;
-    }
-    textarea, input, button, select {
-      width: 100%;
-      margin-top: 10px;
-      padding: 10px;
-      font-size: 14px;
-      box-sizing: border-box;
-    }
-    .output {
-      background: #fff;
-      padding: 10px;
-      border: 1px solid #ddd;
-      margin-top: 10px;
-    }
-    .saved-messages { margin-top: 20px; }
-    .message {
-      background: #e9f7ef;
-      border-left: 4px solid #2ecc71;
-      padding: 10px;
-      margin-bottom: 5px;
-      white-space: pre-wrap;
-    }
-    .error-box {
-      background: #fdecea;
-      border-left: 4px solid #e74c3c;
-      padding: 10px;
-      margin-top: 10px;
-    }
-    h2, h3 { margin-top: 25px; }
-    hr { margin: 30px 0; border: none; border-top: 2px solid #ddd; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>APDCL Notice Generator</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root{
+    --navy:#173250;
+    --navy-dark:#0f2237;
+    --amber:#c8912f;
+    --amber-dark:#a8761f;
+    --paper:#ffffff;
+    --bg:#eef1f5;
+    --panel:#f6f7f9;
+    --ink:#26333f;
+    --muted:#6b7787;
+    --line:#dde2e8;
+    --danger:#b0473f;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);
+    color:var(--ink);
+  }
+  .app{max-width:1080px;margin:0 auto;padding:0 20px 60px;}
 
-    /* Tabs */
-    .tabs {
-      display: flex;
-      margin-bottom: 20px;
-      border-bottom: 2px solid #ddd;
-    }
-    .tab-btn {
-      width: auto;
-      flex: 1;
-      background: #eee;
-      border: none;
-      padding: 12px;
-      cursor: pointer;
-      font-weight: bold;
-      margin: 0;
-    }
-    .tab-btn.active {
-      background: #2ecc71;
-      color: #fff;
-    }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
+  header.top{
+    background:linear-gradient(135deg,var(--navy) 0%,var(--navy-dark) 100%);
+    color:#fff;
+    padding:28px 20px;
+    margin-bottom:24px;
+    border-bottom:4px solid var(--amber);
+  }
+  header.top .inner{max-width:1080px;margin:0 auto;display:flex;align-items:center;gap:16px;}
+  header.top .bolt{
+    width:44px;height:44px;flex:none;border-radius:10px;
+    background:var(--amber);
+    display:flex;align-items:center;justify-content:center;
+    font-size:22px;
+  }
+  header.top h1{margin:0;font-size:20px;letter-spacing:.2px;}
+  header.top p{margin:4px 0 0;font-size:13px;color:#c9d5e2;}
 
-    /* Bulk paste results */
-    .bulk-row {
-      background: #fff;
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      padding: 10px;
-      margin-top: 10px;
+  /* TABS */
+  .tabs{display:flex;gap:8px;margin-bottom:20px;}
+  .tab{
+    padding:12px 20px;background:var(--panel);border:1px solid var(--line);
+    border-radius:8px;font-size:14px;font-weight:600;color:var(--muted);
+    cursor:pointer;user-select:none;transition:all .15s;
+  }
+  .tab:hover{background:#ebeef2;}
+  .tab.active{background:var(--navy);color:#fff;border-color:var(--navy);box-shadow:0 4px 10px rgba(23,50,80,.2);}
+
+  .section{
+    background:var(--paper);
+    border:1px solid var(--line);
+    border-radius:10px;
+    margin-bottom:20px;
+    overflow:hidden;
+  }
+  .section-head{
+    padding:14px 18px;
+    background:var(--panel);
+    border-bottom:1px solid var(--line);
+    display:flex;align-items:center;justify-content:space-between;
+    cursor:pointer;
+    user-select:none;
+  }
+  .section-head h2{margin:0;font-size:14px;text-transform:uppercase;letter-spacing:.6px;color:var(--navy);}
+  .section-head .hint{font-size:12px;color:var(--muted);font-weight:normal;text-transform:none;letter-spacing:0;}
+  .section-body{padding:18px;}
+  .chev{color:var(--muted);transition:transform .15s;}
+  details[open] .chev{transform:rotate(90deg);}
+  details summary{list-style:none;}
+  details summary::-webkit-details-marker{display:none;}
+
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:4px;font-weight:600;}
+  input[type=text], textarea{
+    width:100%;padding:8px 10px;border:1px solid var(--line);
+    border-radius:6px;font-size:13.5px;font-family:inherit;color:var(--ink);background:#fff;
+  }
+  input[type=text]:focus, textarea:focus{outline:2px solid var(--amber);outline-offset:0;border-color:var(--amber);}
+  .field{margin-bottom:12px;}
+
+  textarea.paste-box{min-height:100px;font-family:ui-monospace,Consolas,monospace;font-size:12px;}
+  .paste-row{display:flex;gap:14px;align-items:stretch;flex-wrap:wrap;}
+  .paste-col{flex:1;min-width:280px;display:flex;flex-direction:column;}
+  
+  table.entries{width:100%;border-collapse:collapse;font-size:12.5px;}
+  table.entries th{
+    text-align:left;background:var(--panel);color:var(--muted);
+    font-size:11px;text-transform:uppercase;letter-spacing:.4px;
+    padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap;
+  }
+  table.entries td{padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top;}
+  table.entries input{padding:6px 7px;font-size:12.5px;border:1px solid var(--line);border-radius:5px;width:100%;min-width:70px;}
+  .rowno{color:var(--muted);font-variant-numeric:tabular-nums;padding-top:9px;}
+  .delbtn{
+    background:none;border:none;color:var(--danger);cursor:pointer;font-size:16px;
+    padding:4px 6px;border-radius:5px;
+  }
+  .delbtn:hover{background:#fbeceb;}
+
+  .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;}
+  button{
+    font-family:inherit;font-size:13.5px;font-weight:600;
+    padding:9px 16px;border-radius:7px;border:1px solid transparent;cursor:pointer;
+  }
+  .btn-primary{background:var(--amber);color:#fff;}
+  .btn-primary:hover{background:var(--amber-dark);}
+  .btn-ghost{background:#fff;border-color:var(--line);color:var(--navy);}
+  .btn-ghost:hover{border-color:var(--navy);}
+  .btn-danger-ghost{background:#fff;border-color:var(--line);color:var(--danger);}
+  .btn-danger-ghost:hover{border-color:var(--danger);}
+
+  .actions-bar{
+    position:sticky;bottom:0;
+    background:rgba(238,241,245,.92);backdrop-filter:blur(4px);
+    padding:14px 0;margin-top:10px;
+    border-top:1px solid var(--line);
+    display:flex;gap:10px;flex-wrap:wrap;align-items:center;
+    z-index: 10;
+  }
+  .count-pill{
+    background:var(--navy);color:#fff;font-size:12px;font-weight:600;
+    padding:6px 12px;border-radius:20px;
+  }
+
+  .preview-wrap{margin-top:24px;}
+  .preview-wrap h2{font-size:14px;text-transform:uppercase;letter-spacing:.6px;color:var(--navy);margin:0 0 12px;}
+  .sheet{
+    background:#fff;border:1px solid var(--line);
+    box-shadow:0 2px 10px rgba(23,50,80,.08);
+    border-left:5px solid var(--amber);
+    border-radius:4px;
+    padding:34px 40px;
+    margin-bottom:22px;
+    font-family:Georgia,'Bookman Old Style',serif;
+    font-size:13px;
+    line-height:1.55;
+    color:#111;
+    max-width:760px;
+  }
+  .sheet .center{text-align:center;}
+  .sheet .bold{font-weight:bold;}
+  .sheet .small{font-size:11.5px;color:#333;}
+  .sheet .divider{border:none;border-top:1px dashed #bbb;margin:22px 0;}
+  .sheet .copy-label{
+    display:inline-block;font-size:10.5px;letter-spacing:.5px;text-transform:uppercase;
+    color:var(--amber-dark);border:1px solid var(--amber);border-radius:3px;padding:1px 8px;margin-bottom:10px;
+  }
+  .sheet p{margin:0 0 10px;text-align:justify;}
+  .sheet .lh{margin:0 0 3px;}
+  .empty-state{
+    text-align:center;color:var(--muted);padding:40px 20px;font-size:13.5px;
+  }
+
+  @media print{
+    body { background: #fff; margin: 0; padding: 0; }
+    header.top, .app { display: none !important; }
+    #printArea { display: block !important; }
+    
+    .sheet { 
+      box-shadow: none; border: none; padding: 0; max-width: none; margin: 0; 
+      page-break-after: always; break-after: page; 
     }
-    .bulk-row.no-meter { border-left: 4px solid #f39c12; }
-    .bulk-row textarea { min-height: 70px; }
-    .bulk-row-meta {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      margin-top: 6px;
+    .sheet:last-child { 
+      page-break-after: auto; break-after: auto; 
     }
-    .bulk-row-meta label { display: flex; align-items: center; gap: 5px; font-size: 13px; width: auto; }
-    .bulk-row-meta input[type="text"] { width: 160px; margin-top: 0; }
-    .bulk-row-meta input[type="checkbox"] { width: auto; margin-top: 0; }
-    small { color: #666; display: block; margin-top: 4px; }
-  </style>
+    .copy-label { display: none; }
+  }
+</style>
 </head>
 <body>
 
-  <h1>Consumer Correction Tool</h1>
+<header class="top">
+  <div class="inner">
+    <div class="bolt">⚡</div>
+    <div>
+      <h1>Arrear Notice Letter Generator</h1>
+      <p>Select Notice Type, fill in office details, paste consumer list, then print or download as Word document.</p>
+    </div>
+  </div>
+</header>
+
+<div class="app">
 
   <div class="tabs">
-    <button class="tab-btn active" onclick="switchTab('correction')">Meter Correction</button>
-    <button class="tab-btn" onclick="switchTab('dc')">DC Exemption</button>
+    <div class="tab active" onclick="setMode('MDC')" id="tabMDC">MDC (Multiple Connection)</div>
+    <div class="tab" onclick="setMode('ASS')" id="tabASS">Assessment Bill Arrear</div>
   </div>
 
-  <!-- ===================== TAB 1: METER CORRECTION ===================== -->
-  <div id="tab-correction" class="tab-content active">
-
-    <h2>Single Message</h2>
-
-    <label>PU Number (Correct Meter):</label>
-    <input type="text" id="pu" placeholder="e.g., PU2969791" />
-
-    <label>Correct Consumer Number:</label>
-    <input type="text" id="correctCons" placeholder="e.g., 040000058524" />
-
-    <label>Wrongly Updated Consumer Number:</label>
-    <input type="text" id="wrongCons" placeholder="e.g., 040000058527" />
-
-    <label>Old Meter Number (still installed):</label>
-    <input type="text" id="oldMeter" placeholder="e.g., 3126391" />
-
-    <button onclick="generateMessage()">Generate Message</button>
-
-    <textarea id="output" rows="6" readonly placeholder="Generated message will appear here"></textarea>
-    <button onclick="copyMessage()">📋 Copy Message</button>
-    <button onclick="saveMessage()">💾 Save Message</button>
-
-    <hr/>
-
-    <h2>Bulk Paste</h2>
-    <a href="sample-template.xlsx" download style="display:inline-block; width:auto; margin-top:10px; padding:8px 14px; background:#2ecc71; color:#fff; text-decoration:none; border-radius:4px; font-size:14px;">📥 Download Sample XLSX Template</a>
-    <small>
-      Fill in the template, then select and copy your rows <b>including the header row</b> and paste below. Recognized header words:
-      Correct Consumer, Wrong Consumer, Correct Meter, Wrong Meter, Incident no., Sub-Div, Slr No.
-      Missing columns are fine — just leave them out or leave cells blank.<br/>
-      To mark "no smart meter installed", type <b>NA</b> / <b>no meter</b> / <b>nil</b> in the Correct Meter cell for that row.
-      Hover over header cells in the template for full instructions.
-    </small>
-    <textarea id="bulkInput" rows="8" placeholder="Paste header row + data rows here..."></textarea>
-    <button onclick="parseBulk()">🔍 Parse Pasted Data</button>
-    <div id="bulkError"></div>
-
-    <div id="bulkResultsWrap" style="display:none;">
-      <h3>Parsed Messages</h3>
-
-      <label>Incident Number Mode:</label>
-      <div style="display:flex; gap:20px; margin-top:6px;">
-        <label style="width:auto; display:flex; align-items:center; gap:6px; font-size:14px;">
-          <input type="radio" name="incidentMode" value="single" checked onchange="updateIncidentMode('single')" style="width:auto; margin:0;" />
-          One Incident No. for the whole batch
-        </label>
-        <label style="width:auto; display:flex; align-items:center; gap:6px; font-size:14px;">
-          <input type="radio" name="incidentMode" value="multiple" onchange="updateIncidentMode('multiple')" style="width:auto; margin:0;" />
-          Different Incident No. per row
-        </label>
-      </div>
-
-      <div id="singleIncidentWrap">
-        <label>Incident No. (applies to all selected rows):</label>
-        <input type="text" id="bulkIncidentNo" placeholder="e.g., INC12345" />
-      </div>
-
-      <div id="bulkResults"></div>
-      <button onclick="saveBulkSelected()">💾 Save Selected Messages</button>
-    </div>
-
-    <div class="saved-messages">
-      <h3>✅ Saved Messages</h3>
-      <div id="messageList"></div>
-    </div>
-  </div>
-
-  <!-- ===================== TAB 2: DC EXEMPTION ===================== -->
-  <div id="tab-dc" class="tab-content">
-    <h2>DC Exemption Message Generator</h2>
-
-    <label>Consumer No.:</label>
-    <input type="text" id="dcConsumer" placeholder="e.g., 040000058524" />
-
-    <label>No. of Days Required (max 30):</label>
-    <input type="number" id="dcDays" min="1" max="30" value="7" />
-
-    <label>From Date:</label>
-    <input type="date" id="dcDate" />
-
-    <label>Incident No.:</label>
-    <input type="text" id="dcIncidentNo" placeholder="e.g., INC12345" />
-
-    <button onclick="generateDcMessage()">Generate Message</button>
-
-    <textarea id="dcOutput" rows="6" readonly placeholder="Generated message will appear here"></textarea>
-    <button onclick="copyDcMessage()">📋 Copy Message</button>
-    <button onclick="saveDcMessage()">💾 Save Message</button>
-
-    <div class="saved-messages">
-      <h3>✅ Saved DC Exemption Messages</h3>
-      <div id="dcMessageList"></div>
-    </div>
-  </div>
-
-  <script>
-    const endpoint = "https://script.google.com/macros/s/AKfycbyv4obgvyNyDpKaN0yofCEo4ERqiW4QCapgLscno74oSPE1fGViPsvSpfjV0760abh4/exec"; // Replace with your deployed URL
-
-    // ---------- Tabs ----------
-    function switchTab(name) {
-      document.getElementById('tab-correction').classList.toggle('active', name === 'correction');
-      document.getElementById('tab-dc').classList.toggle('active', name === 'dc');
-      document.querySelectorAll('.tab-btn').forEach((btn, idx) => {
-        btn.classList.toggle('active', (idx === 0 && name === 'correction') || (idx === 1 && name === 'dc'));
-      });
-    }
-
-    // ---------- Shared save helper ----------
-    function postToSheet(payload) {
-      return fetch(endpoint, {
-        method: "POST",
-        headers: { "Content-Type": "text/plain;charset=utf-8" },
-        body: JSON.stringify(payload)
-      }).then(res => res.json());
-    }
-
-    // ---------- Single message (Meter Correction) ----------
-    function generateMessage() {
-      const pu = document.getElementById("pu").value.trim();
-      const correct = document.getElementById("correctCons").value.trim();
-      const wrong = document.getElementById("wrongCons").value.trim();
-      const oldMeter = document.getElementById("oldMeter").value.trim();
-
-      const msg = `${pu} was originally installed under Consumer No. ${correct} but has been erroneously updated to Consumer No. ${wrong}. Kindly note that the old meter (${oldMeter}) is still installed under Consumer No. ${wrong}. Requesting necessary correction at the earliest to avoid discrepancies.`;
-
-      document.getElementById("output").value = msg;
-    }
-
-    function copyMessage() {
-      const output = document.getElementById("output");
-      output.select();
-      document.execCommand("copy");
-      alert("Message copied to clipboard!");
-    }
-
-    function saveMessage() {
-      const message = document.getElementById("output").value.trim();
-      if (!message) {
-        alert("Please generate a message before saving.");
-        return;
-      }
-      const incidentNo = prompt("Please enter the Incident Number:");
-      if (!incidentNo || !incidentNo.trim()) {
-        alert("Incident Number is required to save the message.");
-        return;
-      }
-      postToSheet({ type: "correction", message, incidentNo: incidentNo.trim() })
-        .then(data => {
-          if (data.result === "Success") {
-            alert("Message saved! Check your Google Sheet.");
-            addToList("messageList", `Incident No: ${incidentNo.trim()} — ${message}`);
-          } else {
-            alert("Server error: " + (data.message || "Unknown error"));
-          }
-        })
-        .catch(err => alert("Error: " + err.message));
-    }
-
-    function addToList(listId, text) {
-      const div = document.createElement("div");
-      div.className = "message";
-      div.textContent = text;
-      document.getElementById(listId).prepend(div);
-    }
-
-    // ---------- Bulk paste ----------
-    let bulkRecords = [];
-
-    function detectColumns(headerLine) {
-      const cols = headerLine.split("\t").map(h => h.trim().toLowerCase());
-      return cols.map(h => {
-        if (h.includes("slr")) return "slrNo";
-        if (h.includes("sub")) return "subDiv";
-        if (h.includes("correct") && h.includes("consumer")) return "correctCons";
-        if (h.includes("wrong") && h.includes("consumer")) return "wrongCons";
-        if (h.includes("correct") && h.includes("meter")) return "correctMeter";
-        if (h.includes("wrong") && h.includes("meter")) return "wrongMeter";
-        if (h.includes("incident")) return "incidentNo";
-        return "ignore";
-      });
-    }
-
-    function isNoMeterKeyword(value) {
-      if (!value) return false;
-      const v = value.trim().toLowerCase();
-      return ["na", "n/a", "no meter", "nil", "none", "-"].includes(v);
-    }
-
-    // Multiple phrasings so a batch of messages doesn't read as copy-pasted.
-    const correctionTemplates = [
-      (cm, cc, wc, wm) => {
-        let m = `${cm} was originally installed under Consumer No. ${cc}`;
-        m += wc ? ` but has been erroneously updated to Consumer No. ${wc}.` : `.`;
-        if (wm) m += ` Kindly note that the old meter (${wm}) is still installed under Consumer No. ${wc || cc}.`;
-        m += ` Requesting necessary correction at the earliest to avoid discrepancies.`;
-        return m;
-      },
-      (cm, cc, wc, wm) => {
-        let m = `Meter ${cm} belongs to Consumer No. ${cc}`;
-        m += wc ? `, however it currently reflects under Consumer No. ${wc} by mistake.` : `, however the current tagging appears incorrect.`;
-        if (wm) m += ` Also, meter ${wm} continues to remain installed under Consumer No. ${wc || cc}.`;
-        m += ` Please carry out the correction at the earliest to avoid billing discrepancies.`;
-        return m;
-      },
-      (cm, cc, wc, wm) => {
-        let m = `This is regarding Consumer No. ${cc}, whose correct meter is ${cm}.`;
-        if (wc) m += ` It has been wrongly mapped to Consumer No. ${wc}.`;
-        if (wm) m += ` The meter physically installed at Consumer No. ${wc || cc} is ${wm}, which needs correction.`;
-        m += ` Kindly rectify this tagging issue at the earliest.`;
-        return m;
-      },
-      (cm, cc, wc, wm) => {
-        let m = `Requesting correction of meter tagging: ${cm} should be mapped to Consumer No. ${cc}`;
-        m += wc ? `, not Consumer No. ${wc} as it currently stands.` : `.`;
-        if (wm) m += ` Additionally, meter ${wm} remains installed under Consumer No. ${wc || cc} and needs attention.`;
-        m += ` Kindly resolve at the earliest.`;
-        return m;
-      }
-    ];
-
-    const noMeterTemplates = [
-      cc => `No smart meter is installed for Consumer No. ${cc}. Kindly arrange installation/tagging of a smart meter at the earliest.`,
-      cc => `Consumer No. ${cc} currently has no smart meter installed. Requesting installation of a smart meter at the earliest.`,
-      cc => `Please note that Consumer No. ${cc} does not have a smart meter tagged. Kindly arrange for installation soon.`,
-      cc => `This is to bring to notice that no smart meter is presently tagged against Consumer No. ${cc}. Requesting installation at the earliest.`
-    ];
-
-    function buildMessageForRecord(rec, variantIdx) {
-      const correctCons = rec.correctCons || "";
-      const wrongCons = rec.wrongCons || "";
-      const correctMeter = rec.correctMeter || "";
-      const wrongMeter = (rec.wrongMeter && !isNoMeterKeyword(rec.wrongMeter)) ? rec.wrongMeter : "";
-
-      if (isNoMeterKeyword(correctMeter)) {
-        const idx = variantIdx !== undefined ? variantIdx % noMeterTemplates.length : Math.floor(Math.random() * noMeterTemplates.length);
-        return { noMeter: true, variantIdx: idx, text: noMeterTemplates[idx](correctCons) };
-      }
-      const idx = variantIdx !== undefined ? variantIdx % correctionTemplates.length : Math.floor(Math.random() * correctionTemplates.length);
-      return { noMeter: false, variantIdx: idx, text: correctionTemplates[idx](correctMeter, correctCons, wrongCons, wrongMeter) };
-    }
-
-    function rewordRow(idx) {
-      const rec = bulkRecords[idx];
-      const pool = rec.noMeter ? noMeterTemplates : correctionTemplates;
-      let nextVariant = Math.floor(Math.random() * pool.length);
-      if (pool.length > 1) {
-        while (nextVariant === rec.variantIdx) nextVariant = Math.floor(Math.random() * pool.length);
-      }
-      const built = buildMessageForRecord(rec, nextVariant);
-      rec.text = built.text;
-      rec.variantIdx = built.variantIdx;
-      renderBulkResults();
-    }
-
-    function parseBulk() {
-      const errorDiv = document.getElementById("bulkError");
-      errorDiv.innerHTML = "";
-      document.getElementById("bulkResultsWrap").style.display = "none";
-
-      const raw = document.getElementById("bulkInput").value;
-      const lines = raw.split("\n").map(l => l.replace("\r", "")).filter(l => l.trim() !== "");
-
-      if (lines.length < 2) {
-        errorDiv.innerHTML = `<div class="error-box">Paste a header row plus at least one data row.</div>`;
-        return;
-      }
-
-      const colMap = detectColumns(lines[0]);
-      if (!colMap.includes("correctCons")) {
-        errorDiv.innerHTML = `<div class="error-box">Couldn't find a "Correct Consumer" column in the header row. Please check the header names and try again.</div>`;
-        return;
-      }
-
-      bulkRecords = [];
-      for (let i = 1; i < lines.length; i++) {
-        const cells = lines[i].split("\t");
-        const rec = {};
-        colMap.forEach((key, idx) => {
-          if (key === "ignore") return;
-          rec[key] = (cells[idx] || "").trim();
-        });
-        if (!rec.correctCons) continue; // skip empty/junk rows
-        const built = buildMessageForRecord(rec);
-        bulkRecords.push({
-          incidentNo: rec.incidentNo || "",
-          text: built.text,
-          noMeter: built.noMeter,
-          variantIdx: built.variantIdx,
-          selected: true
-        });
-      }
-
-      if (bulkRecords.length === 0) {
-        errorDiv.innerHTML = `<div class="error-box">No valid rows found. Make sure "Correct Consumer" has a value in each data row.</div>`;
-        return;
-      }
-
-      renderBulkResults();
-      document.getElementById("bulkResultsWrap").style.display = "block";
-    }
-
-    let bulkIncidentMode = "single";
-
-    function updateIncidentMode(mode) {
-      bulkIncidentMode = mode;
-      document.getElementById("singleIncidentWrap").style.display = mode === "single" ? "block" : "none";
-      renderBulkResults();
-    }
-
-    function renderBulkResults() {
-      const wrap = document.getElementById("bulkResults");
-      wrap.innerHTML = "";
-      bulkRecords.forEach((rec, idx) => {
-        const div = document.createElement("div");
-        div.className = "bulk-row" + (rec.noMeter ? " no-meter" : "");
-        const incidentField = bulkIncidentMode === "multiple"
-          ? `<input type="text" placeholder="Incident No. (required)" value="${rec.incidentNo}" onchange="bulkRecords[${idx}].incidentNo=this.value" />`
-          : "";
-        div.innerHTML = `
-          <textarea onchange="bulkRecords[${idx}].text=this.value">${rec.text}</textarea>
-          <div class="bulk-row-meta">
-            <label><input type="checkbox" ${rec.selected ? "checked" : ""} onchange="bulkRecords[${idx}].selected=this.checked" /> Include</label>
-            <button type="button" style="width:auto; margin-top:0; padding:6px 10px;" onclick="rewordRow(${idx})">🔀 Reword</button>
-            ${incidentField}
+  <div class="section">
+    <details>
+      <summary class="section-head">
+        <h2>1 · Office Details <span class="hint">(set once, applies to all letters)</span></h2>
+        <span class="chev">▶</span>
+      </summary>
+      <div class="section-body">
+        <div class="grid">
+          <div class="field">
+            <label>Company Name</label>
+            <input type="text" id="s_company" value="ASSAM POWER DISTRIBUTION COMPANY LIMITED">
           </div>
-        `;
-        wrap.appendChild(div);
+          <div class="field">
+            <label>Office Title</label>
+            <input type="text" id="s_officeTitle" value="Office of the Sub-Divisional Engineer,">
+          </div>
+          <div class="field">
+            <label>Sub-Division</label>
+            <input type="text" id="s_subdivision" value="Goalpara Electrical Sub-Division,">
+          </div>
+          <div class="field">
+            <label>Circle</label>
+            <input type="text" id="s_circle" value="Goalpara Electrical Circle, LAR">
+          </div>
+          <div class="field">
+            <label>E-mail</label>
+            <input type="text" id="s_email" value="sde.goalpara_esd@apdcl.org">
+          </div>
+          <div class="field">
+            <label>Fixed Reference Prefix</label>
+            <input type="text" id="s_refprefix" value="SDE/GESD/APDCL/LAR/GpEC/T-61/2026/">
+          </div>
+          <div class="field" style="grid-column:1/-1;">
+            <label>Subject</label>
+            <input type="text" id="s_subject" value="Addition of arrear amount to active connection.">
+          </div>
+          <div class="field" style="grid-column:1/-1;">
+            <label>Copy To (You can add multiple lines here)</label>
+            <textarea id="s_copyto" rows="2" style="resize:vertical;">1. The Assistant General Manager, Goalpara Electrical Division, APDCL, LAR.</textarea>
+          </div>
+          <div class="field" style="grid-column:1/-1;">
+            <label>Signature Block (separate lines with a | character)</label>
+            <input type="text" id="s_signblock" value="Sub Divisional Engineer, | Goalpara Electrical Sub-Division, | APDCL, LAR">
+          </div>
+        </div>
+      </div>
+    </details>
+  </div>
+
+  <div class="section">
+    <div class="section-head" style="cursor:default;">
+      <h2>2 · Add Consumer Data</h2>
+    </div>
+    <div class="section-body">
+
+      <div class="paste-row">
+        <div class="paste-col" style="flex:0.8;">
+          <label>Box 1: Issue No. & Date (Optional)</label>
+          <textarea id="pasteBoxMeta" class="paste-box" placeholder="Type ONE line here.&#10;&#10;Example:&#10;1234 18.07.2026&#10;&#10;(This will automatically apply to ALL rows you paste in Box 2!)"></textarea>
+        </div>
+        <div class="paste-col" style="flex:1.2;">
+          <label id="lblBoxData">Box 2: Consumer Data (Mandatory)</label>
+          <textarea id="pasteBoxData" class="paste-box" placeholder="Paste ONLY the remaining columns from Excel here..."></textarea>
+        </div>
+      </div>
+      
+      <div class="btnrow">
+        <button class="btn-primary" onclick="parsePaste()">Add pasted rows to table ↓</button>
+        <button class="btn-ghost" onclick="addBlankRow()">+ Add one blank row</button>
+      </div>
+
+      <div style="overflow-x:auto;margin-top:18px;">
+        <table class="entries" id="entriesTable">
+          <thead id="tableHead"></thead>
+          <tbody id="entriesBody"></tbody>
+        </table>
+      </div>
+
+      <div class="actions-bar">
+        <span class="count-pill" id="rowCount">0 notices</span>
+        <button class="btn-primary" onclick="renderPreview()">Generate Letters ↓</button>
+        <button class="btn-primary" onclick="downloadRealDocx()">⬇ Download as Word (.docx) — exact format</button>
+        <button class="btn-ghost" onclick="printLetters()">🖨 Print / Save as PDF</button>
+        <button class="btn-danger-ghost" onclick="clearAll()">Clear all rows</button>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="preview-wrap">
+    <h2>3 · Preview</h2>
+    <div id="previewArea"><div class="empty-state">Add consumer rows above, then click "Generate Letters" to preview them here.</div></div>
+  </div>
+
+</div>
+
+<div id="printArea" style="display:none;"></div>
+
+<script>
+const DOCX_PARTS = {
+  PART_HEADER: "<?xml version='1.0' encoding='UTF-8' standalone='yes'?>\n<w:document xmlns:ve=\"http://schemas.openxmlformats.org/markup-compatibility/2006\" xmlns:o=\"urn:schemas-microsoft-com:office:office\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:m=\"http://schemas.openxmlformats.org/officeDocument/2006/math\" xmlns:v=\"urn:schemas-microsoft-com:vml\" xmlns:wp=\"http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing\" xmlns:w10=\"urn:schemas-microsoft-com:office:word\" xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\" xmlns:wne=\"http://schemas.microsoft.com/office/word/2006/wordml\"><w:body>",
+  PART_BODY: `<w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="0"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Britannic Bold" w:hAnsi="Britannic Bold"/><w:sz w:val="40"/></w:rPr><w:t>{{COMPANY}}</w:t></w:r></w:p><w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="0"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Avenir Next LT Pro Demi" w:hAnsi="Avenir Next LT Pro Demi"/><w:b/><w:sz w:val="28"/></w:rPr><w:t>{{OFFICE_TITLE}}</w:t></w:r></w:p><w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="0"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Avenir Next LT Pro Demi" w:hAnsi="Avenir Next LT Pro Demi"/><w:b/><w:u w:val="single"/><w:sz w:val="24"/></w:rPr><w:t>{{SUBDIVISION}}</w:t></w:r></w:p><w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="0"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Avenir Next LT Pro Demi" w:hAnsi="Avenir Next LT Pro Demi"/><w:b/><w:sz w:val="24"/></w:rPr><w:t>{{CIRCLE}}</w:t></w:r></w:p><w:p><w:pPr><w:jc w:val="center"/><w:spacing w:after="60"/><w:pBdr><w:bottom w:val="single" w:sz="8" w:space="4" w:color="000000"/></w:pBdr></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:b/><w:sz w:val="24"/></w:rPr><w:t>e-mail: {{EMAIL}}</w:t></w:r></w:p><w:p><w:pPr><w:tabs><w:tab w:val="right" w:pos="9026"/></w:tabs><w:spacing w:before="60" w:after="240"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:b/><w:sz w:val="18"/></w:rPr><w:t>No. {{REFPREFIX}}{{REF}}</w:t></w:r><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:b/><w:sz w:val="18"/></w:rPr><w:tab/><w:t>DT. {{DATE}}</w:t></w:r></w:p><w:p><w:pPr><w:spacing w:line="240" w:lineRule="auto"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:b/><w:sz w:val="20"/></w:rPr><w:t>To,</w:t></w:r></w:p><w:p><w:pPr><w:spacing w:line="240" w:lineRule="auto"/><w:ind w:left="720" w:hanging="360"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:b/><w:sz w:val="20"/></w:rPr><w:t>{{CONSUMER_A_LINE}}</w:t></w:r></w:p><w:p><w:pPr><w:spacing w:line="240" w:lineRule="auto"/><w:ind w:left="720" w:hanging="360"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:b/><w:sz w:val="20"/></w:rPr><w:t>{{CONSUMER_B_LINE}}</w:t></w:r></w:p><w:p><w:pPr><w:spacing w:line="240" w:lineRule="auto"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:u w:val="single"/><w:sz w:val="20"/></w:rPr><w:t>Sub</w:t></w:r><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:sz w:val="20"/></w:rPr><w:t>: {{SUBJECT}}</w:t></w:r></w:p><w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:jc w:val="both"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:sz w:val="20"/></w:rPr><w:t>Sir/Madam,</w:t></w:r></w:p><w:p><w:pPr><w:spacing w:line="240" w:lineRule="auto"/><w:jc w:val="both"/></w:pPr>{{MAIN_BODY}}</w:p><w:p><w:pPr><w:spacing w:line="240" w:lineRule="auto"/><w:jc w:val="both"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:sz w:val="20"/></w:rPr><w:t>This is for your information and necessary action.</w:t></w:r></w:p><w:p><w:pPr><w:spacing w:line="240" w:lineRule="auto"/><w:ind w:left="6480" w:firstLine="720"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:sz w:val="20"/></w:rPr><w:t xml:space="preserve"> Sincerely,</w:t></w:r></w:p><w:p><w:pPr><w:spacing w:line="240" w:lineRule="auto"/><w:ind w:left="6480" w:firstLine="720"/></w:pPr></w:p><w:p><w:pPr><w:spacing w:line="240" w:lineRule="auto"/><w:ind w:left="6480" w:firstLine="720"/></w:pPr></w:p><w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:ind w:left="5760"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:b/><w:sz w:val="20"/></w:rPr><w:t>{{SIGN1}}</w:t></w:r></w:p><w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:ind w:left="5760"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:b/><w:sz w:val="20"/></w:rPr><w:t>{{SIGN2}}</w:t></w:r></w:p><w:p><w:pPr><w:spacing w:line="240" w:lineRule="auto"/><w:ind w:left="5760"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:b/><w:sz w:val="20"/></w:rPr><w:t>{{SIGN3}}</w:t></w:r></w:p>{{COPY_TO_BLOCK}}`,
+  PART_SECT: "<w:sectPr w:rsidR=\"00B44DE4\" w:rsidSect=\"00B44DE4\"><w:pgSz w:w=\"12240\" w:h=\"15840\"/><w:pgMar w:top=\"1440\" w:right=\"1440\" w:bottom=\"1440\" w:left=\"1440\" w:header=\"708\" w:footer=\"708\" w:gutter=\"0\"/><w:cols w:space=\"708\"/><w:docGrid w:linePitch=\"360\"/></w:sectPr>",
+  CONTENT_TYPES: "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<Types xmlns=\"http://schemas.openxmlformats.org/package/2006/content-types\"><Default Extension=\"rels\" ContentType=\"application/vnd.openxmlformats-package.relationships+xml\"/><Default Extension=\"xml\" ContentType=\"application/xml\"/><Override PartName=\"/word/document.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml\"/><Override PartName=\"/word/numbering.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml\"/><Override PartName=\"/word/styles.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml\"/><Override PartName=\"/docProps/app.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.extended-properties+xml\"/><Override PartName=\"/word/settings.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml\"/><Override PartName=\"/word/theme/theme1.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.theme+xml\"/><Override PartName=\"/word/fontTable.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.fontTable+xml\"/><Override PartName=\"/word/webSettings.xml\" ContentType=\"application/vnd.openxmlformats-officedocument.wordprocessingml.webSettings+xml\"/><Override PartName=\"/docProps/core.xml\" ContentType=\"application/vnd.openxmlformats-package.core-properties+xml\"/></Types>",
+  RELS_ROOT: "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId3\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties\" Target=\"docProps/app.xml\"/><Relationship Id=\"rId2\" Type=\"http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties\" Target=\"docProps/core.xml\"/><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument\" Target=\"word/document.xml\"/></Relationships>",
+  DOC_RELS: "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<Relationships xmlns=\"http://schemas.openxmlformats.org/package/2006/relationships\"><Relationship Id=\"rId3\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings\" Target=\"settings.xml\"/><Relationship Id=\"rId2\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles\" Target=\"styles.xml\"/><Relationship Id=\"rId1\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering\" Target=\"numbering.xml\"/><Relationship Id=\"rId6\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme\" Target=\"theme/theme1.xml\"/><Relationship Id=\"rId5\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/fontTable\" Target=\"fontTable.xml\"/><Relationship Id=\"rId4\" Type=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships/webSettings\" Target=\"webSettings.xml\"/></Relationships>",
+  STYLES: "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<w:styles xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:asciiTheme=\"minorHAnsi\" w:eastAsiaTheme=\"minorHAnsi\" w:hAnsiTheme=\"minorHAnsi\" w:cstheme=\"minorBidi\"/><w:sz w:val=\"22\"/><w:szCs w:val=\"22\"/><w:lang w:val=\"en-US\" w:eastAsia=\"en-US\" w:bidi=\"ar-SA\"/></w:rPr></w:rPrDefault><w:pPrDefault><w:pPr><w:spacing w:after=\"200\" w:line=\"276\" w:lineRule=\"auto\"/></w:pPr></w:pPrDefault></w:docDefaults><w:latentStyles w:defLockedState=\"0\" w:defUIPriority=\"99\" w:defSemiHidden=\"1\" w:defUnhideWhenUsed=\"1\" w:defQFormat=\"0\" w:count=\"267\"><w:lsdException w:name=\"Normal\" w:semiHidden=\"0\" w:uiPriority=\"0\" w:unhideWhenUsed=\"0\" w:qFormat=\"1\"/></w:latentStyles><w:style w:type=\"paragraph\" w:default=\"1\" w:styleId=\"Normal\"><w:name w:val=\"Normal\"/><w:qFormat/><w:rsid w:val=\"002565ED\"/><w:pPr><w:spacing w:after=\"160\" w:line=\"259\" w:lineRule=\"auto\"/></w:pPr><w:rPr><w:lang w:val=\"en-IN\"/></w:rPr></w:style><w:style w:type=\"character\" w:default=\"1\" w:styleId=\"DefaultParagraphFont\"><w:name w:val=\"Default Paragraph Font\"/><w:uiPriority w:val=\"1\"/><w:semiHidden/><w:unhideWhenUsed/></w:style><w:style w:type=\"table\" w:default=\"1\" w:styleId=\"TableNormal\"><w:name w:val=\"Normal Table\"/><w:uiPriority w:val=\"99\"/><w:semiHidden/><w:unhideWhenUsed/><w:qFormat/><w:tblPr><w:tblInd w:w=\"0\" w:type=\"dxa\"/><w:tblCellMar><w:top w:w=\"0\" w:type=\"dxa\"/><w:left w:w=\"108\" w:type=\"dxa\"/><w:bottom w:w=\"0\" w:type=\"dxa\"/><w:right w:w=\"108\" w:type=\"dxa\"/></w:tblCellMar></w:tblPr></w:style></w:styles>",
+  THEME1: "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<a:theme xmlns:a=\"http://schemas.openxmlformats.org/drawingml/2006/main\" name=\"Office Theme\"><a:themeElements><a:clrScheme name=\"Office\"><a:dk1><a:sysClr val=\"windowText\" lastClr=\"000000\"/></a:dk1><a:lt1><a:sysClr val=\"window\" lastClr=\"FFFFFF\"/></a:lt1><a:dk2><a:srgbClr val=\"1F497D\"/></a:dk2><a:lt2><a:srgbClr val=\"EEECE1\"/></a:lt2><a:accent1><a:srgbClr val=\"4F81BD\"/></a:accent1><a:accent2><a:srgbClr val=\"C0504D\"/></a:accent2><a:accent3><a:srgbClr val=\"9BBB59\"/></a:accent3><a:accent4><a:srgbClr val=\"8064A2\"/></a:accent4><a:accent5><a:srgbClr val=\"4BACC6\"/></a:accent5><a:accent6><a:srgbClr val=\"F79646\"/></a:accent6><a:hlink><a:srgbClr val=\"0000FF\"/></a:hlink><a:folHlink><a:srgbClr val=\"800080\"/></a:folHlink></a:clrScheme><a:fontScheme name=\"Office\"><a:majorFont><a:latin typeface=\"Cambria\"/><a:ea typeface=\"\"/><a:cs typeface=\"\"/></a:majorFont><a:minorFont><a:latin typeface=\"Calibri\"/><a:ea typeface=\"\"/><a:cs typeface=\"\"/></a:minorFont></a:fontScheme><a:fmtScheme name=\"Office\"><a:fillStyleLst><a:solidFill><a:schemeClr val=\"phClr\"/></a:solidFill></a:fillStyleLst><a:lnStyleLst><a:ln w=\"9525\" cap=\"flat\" cmpd=\"sng\" algn=\"ctr\"><a:solidFill><a:schemeClr val=\"phClr\"/></a:solidFill><a:prstDash val=\"solid\"/></a:ln></a:lnStyleLst><a:effectStyleLst><a:effectStyle><a:effectLst/></a:effectStyle></a:effectStyleLst><a:bgFillStyleLst><a:solidFill><a:schemeClr val=\"phClr\"/></a:solidFill></a:bgFillStyleLst></a:fmtScheme></a:themeElements></a:theme>",
+  SETTINGS: "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<w:settings xmlns:o=\"urn:schemas-microsoft-com:office:office\" xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:m=\"http://schemas.openxmlformats.org/officeDocument/2006/math\" xmlns:v=\"urn:schemas-microsoft-com:vml\" xmlns:w10=\"urn:schemas-microsoft-com:office:word\" xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\" xmlns:sl=\"http://schemas.openxmlformats.org/schemaLibrary/2006/main\"><w:zoom w:percent=\"100\"/><w:proofState w:spelling=\"clean\" w:grammar=\"clean\"/><w:defaultTabStop w:val=\"720\"/><w:characterSpacingControl w:val=\"doNotCompress\"/><w:compat/><w:rsids><w:rsidRoot w:val=\"002565ED\"/><w:rsid w:val=\"002565ED\"/><w:rsid w:val=\"00B44DE4\"/></w:rsids><m:mathPr><m:mathFont m:val=\"Cambria Math\"/><m:brkBin m:val=\"before\"/><m:brkBinSub m:val=\"--\"/><m:smallFrac m:val=\"off\"/><m:dispDef/><m:lMargin m:val=\"0\"/><m:rMargin m:val=\"0\"/><m:defJc m:val=\"centerGroup\"/><m:wrapIndent m:val=\"1440\"/><m:intLim m:val=\"subSup\"/><m:naryLim m:val=\"undOvr\"/></m:mathPr><w:themeFontLang w:val=\"en-US\"/><w:clrSchemeMapping w:bg1=\"light1\" w:t1=\"dark1\" w:bg2=\"light2\" w:t2=\"dark2\" w:accent1=\"accent1\" w:accent2=\"accent2\" w:accent3=\"accent3\" w:accent4=\"accent4\" w:accent5=\"accent5\" w:accent6=\"accent6\" w:hyperlink=\"hyperlink\" w:followedHyperlink=\"followedHyperlink\"/><w:shapeDefaults><o:shapedefaults v:ext=\"edit\" spidmax=\"2050\"/><o:shapelayout v:ext=\"edit\"><o:idmap v:ext=\"edit\" data=\"1\"/><o:rules v:ext=\"edit\"><o:r id=\"V:Rule1\" type=\"connector\" idref=\"#AutoShape 5\"/></o:rules></o:shapelayout></w:shapeDefaults><w:decimalSymbol w:val=\".\"/><w:listSeparator w:val=\",\"/></w:settings>",
+  WEBSETTINGS: "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<w:webSettings xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:optimizeForBrowser/></w:webSettings>",
+  NUMBERING: "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<w:numbering xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"></w:numbering>",
+  FONTTABLE: "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<w:fonts xmlns:r=\"http://schemas.openxmlformats.org/officeDocument/2006/relationships\" xmlns:w=\"http://schemas.openxmlformats.org/wordprocessingml/2006/main\"><w:font w:name=\"Times New Roman\"><w:panose1 w:val=\"02020603050405020304\"/><w:charset w:val=\"00\"/><w:family w:val=\"roman\"/><w:pitch w:val=\"variable\"/></w:font><w:font w:name=\"Calibri\"><w:panose1 w:val=\"020F0502020204030204\"/><w:charset w:val=\"00\"/><w:family w:val=\"swiss\"/><w:pitch w:val=\"variable\"/></w:font><w:font w:name=\"Britannic Bold\"><w:panose1 w:val=\"020B0903060703020204\"/><w:charset w:val=\"00\"/><w:family w:val=\"swiss\"/><w:pitch w:val=\"variable\"/></w:font><w:font w:name=\"Avenir Next LT Pro Demi\"><w:altName w:val=\"Arial\"/><w:charset w:val=\"00\"/><w:family w:val=\"swiss\"/><w:pitch w:val=\"variable\"/></w:font><w:font w:name=\"Bookman Old Style\"><w:panose1 w:val=\"02050604050505020204\"/><w:charset w:val=\"00\"/><w:family w:val=\"roman\"/><w:pitch w:val=\"variable\"/></w:font></w:fonts>",
+  CORE: "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<cp:coreProperties xmlns:cp=\"http://schemas.openxmlformats.org/package/2006/metadata/core-properties\" xmlns:dc=\"http://purl.org/dc/elements/1.1/\" xmlns:dcterms=\"http://purl.org/dc/terms/\" xmlns:dcmitype=\"http://purl.org/dc/dcmitype/\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"><dc:creator>APDCL</dc:creator><cp:lastModifiedBy>APDCL</cp:lastModifiedBy><cp:revision>1</cp:revision><dcterms:created xsi:type=\"dcterms:W3CDTF\">2026-03-11T08:30:00Z</dcterms:created><dcterms:modified xsi:type=\"dcterms:W3CDTF\">2026-03-11T08:33:00Z</dcterms:modified></cp:coreProperties>",
+  APP: "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>\n<Properties xmlns=\"http://schemas.openxmlformats.org/officeDocument/2006/extended-properties\" xmlns:vt=\"http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes\"><Template>Normal</Template><TotalTime>3</TotalTime><Pages>2</Pages><Words>245</Words><Application>Microsoft Office Word</Application><DocSecurity>0</DocSecurity><Lines>11</Lines><Paragraphs>3</Paragraphs><ScaleCrop>false</ScaleCrop><Company></Company><LinksUpToDate>false</LinksUpToDate><SharedDoc>false</SharedDoc><HyperlinksChanged>false</HyperlinksChanged><AppVersion>12.0000</AppVersion></Properties>",
+};
+
+let rows = [];
+let mode = 'MDC'; 
+
+function setMode(newMode){
+  mode = newMode;
+  document.getElementById('tabMDC').classList.toggle('active', mode === 'MDC');
+  document.getElementById('tabASS').classList.toggle('active', mode === 'ASS');
+  
+  if(mode === 'MDC'){
+    document.getElementById('lblBoxData').innerText = "Box 2: Consumer Data (7 Cols: B No, B Name, B Addr, B Amt, A No, A Name, A Addr)";
+  } else {
+    document.getElementById('lblBoxData').innerText = "Box 2: Consumer Data (5 Cols: Cons No, Name, Addr, Bill No, Amt)";
+  }
+  
+  rows = [];
+  addBlankRow();
+}
+
+function addBlankRow(){
+  if(mode === 'MDC'){
+    rows.push({ref:"", date:"", bNo:"", bName:"", bAddr:"", bAmt:"", aNo:"", aName:"", aAddr:""});
+  } else {
+    rows.push({ref:"", date:"", aNo:"", aName:"", address:"", billNo:"", amount:""});
+  }
+  renderTable();
+}
+
+function removeRow(i){
+  rows.splice(i,1);
+  renderTable();
+}
+
+function formatAmt(val){
+  if(!val || val.toString().trim() === '') return "";
+  let num = parseFloat(val.toString().replace(/,/g, '').replace(/₹/g,'').trim());
+  return isNaN(num) ? val : "₹ " + num.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+function parsePaste(){
+  const rawMeta = document.getElementById('pasteBoxMeta').value.trim();
+  const rawData = document.getElementById('pasteBoxData').value.trim();
+
+  const linesMeta = rawMeta ? rawMeta.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>0) : [];
+  const linesData = rawData ? rawData.split(/\r?\n/).map(l=>l.trim()).filter(l=>l.length>0) : [];
+
+  const maxLines = Math.max(linesMeta.length, linesData.length);
+  let added = 0;
+
+  const repeatMeta = linesMeta.length === 1;
+
+  for(let i=0; i<maxLines; i++){
+    const mLine = repeatMeta ? linesMeta[0] : (linesMeta[i] || "");
+    
+    let colsMeta = mLine.includes('\t') ? mLine.split('\t') : [];
+    if (colsMeta.length < 2 && mLine.includes(' ')) {
+      const firstSpace = mLine.indexOf(' ');
+      colsMeta = [mLine.substring(0, firstSpace).trim(), mLine.substring(firstSpace + 1).trim()];
+    }
+    
+    const dLine = linesData[i] || "";
+    const colsData = dLine.split('\t');
+
+    if(/issue no/i.test(colsMeta[0]) || /date/i.test(colsMeta[1])) continue;
+    if(colsData.length > 0 && (/name/i.test(colsData[0]) || /cons no/i.test(colsData[0]) || /consumer no/i.test(colsData[0]))) continue;
+    if(mLine.trim() === '' && dLine.trim() === '') continue;
+
+    let ref = (colsMeta[0] || "").trim();
+    let date = (colsMeta[1] || "").trim();
+    
+    let dataIndex = 0; 
+
+    if(mode === 'MDC'){
+      rows.push({
+        ref: ref,
+        date: date,
+        bNo: (colsData[0] || "").trim(),
+        bName: (colsData[1] || "").trim(),
+        bAddr: (colsData[2] || "").trim(),
+        bAmt: formatAmt(colsData[3]),
+        aNo: (colsData[4] || "").trim(),
+        aName: (colsData[5] || "").trim(),
+        aAddr: (colsData[6] || "").trim()
+      });
+    } else {
+      let rawAmt = (colsData[4] || "").trim();
+      rows.push({
+        ref: ref,
+        date: date,
+        aNo: (colsData[0] || "").trim(),
+        aName: (colsData[1] || "").trim(),
+        address: (colsData[2] || "").trim(),
+        billNo: (colsData[3] || "").trim(),
+        amount: formatAmt(rawAmt)
       });
     }
+    added++;
+  }
 
-    async function saveBulkSelected() {
-      const toSave = bulkRecords.filter(r => r.selected);
+  document.getElementById('pasteBoxMeta').value = "";
+  document.getElementById('pasteBoxData').value = "";
+  renderTable();
+  if(added===0){
+    alert("No rows detected. Copy cells directly from Excel.");
+  }
+}
 
-      if (toSave.length === 0) {
-        alert("No rows selected.");
-        return;
-      }
+function renderTable(){
+  const thead = document.getElementById('tableHead');
+  const body = document.getElementById('entriesBody');
+  
+  if(mode === 'MDC'){
+    thead.innerHTML = `<tr>
+      <th style="width:30px">#</th>
+      <th style="width:70px">Issue No.</th>
+      <th style="width:90px">Date</th>
+      <th>B No.</th>
+      <th>B Name</th>
+      <th>B Addr</th>
+      <th>B Amt</th>
+      <th>A No.</th>
+      <th>A Name</th>
+      <th>A Addr</th>
+      <th style="width:30px"></th>
+    </tr>`;
+  } else {
+    thead.innerHTML = `<tr>
+      <th style="width:30px">#</th>
+      <th style="width:70px">Issue No.</th>
+      <th style="width:90px">Date</th>
+      <th>Cons No.</th>
+      <th>Name</th>
+      <th>Address</th>
+      <th>Bill No.</th>
+      <th>Amount (₹)</th>
+      <th style="width:30px"></th>
+    </tr>`;
+  }
 
-      let sharedIncident = "";
-      if (bulkIncidentMode === "single") {
-        sharedIncident = document.getElementById("bulkIncidentNo").value.trim();
-        if (!sharedIncident) {
-          alert("Please enter the Incident No. for the batch.");
-          return;
-        }
-      } else {
-        const missing = toSave.some(r => !r.incidentNo || !r.incidentNo.trim());
-        if (missing) {
-          alert("Every selected row needs its own Incident No. in 'Different Incident No. per row' mode.");
-          return;
-        }
-      }
-
-      let successCount = 0;
-      let failCount = 0;
-
-      for (const rec of toSave) {
-        const incidentNo = (bulkIncidentMode === "single" ? sharedIncident : rec.incidentNo).trim();
-        if (!incidentNo) {
-          failCount++;
-          continue;
-        }
-        try {
-          const data = await postToSheet({ type: "correction", message: rec.text, incidentNo });
-          if (data.result === "Success") {
-            successCount++;
-            addToList("messageList", `Incident No: ${incidentNo} — ${rec.text}`);
-          } else {
-            failCount++;
-          }
-        } catch (e) {
-          failCount++;
-        }
-      }
-
-      alert(`Saved: ${successCount}. Failed: ${failCount}${failCount > 0 ? " (check that every row has an Incident No.)" : ""}.`);
+  body.innerHTML = "";
+  rows.forEach((r,i)=>{
+    const tr = document.createElement('tr');
+    if(mode === 'MDC'){
+      tr.innerHTML = `
+        <td class="rowno">${i+1}</td>
+        <td><input type="text" value="${esc(r.ref)}" oninput="rows[${i}].ref=this.value"></td>
+        <td><input type="text" value="${esc(r.date)}" oninput="rows[${i}].date=this.value"></td>
+        <td><input type="text" value="${esc(r.bNo)}" oninput="rows[${i}].bNo=this.value"></td>
+        <td><input type="text" value="${esc(r.bName)}" oninput="rows[${i}].bName=this.value"></td>
+        <td><input type="text" value="${esc(r.bAddr)}" oninput="rows[${i}].bAddr=this.value"></td>
+        <td><input type="text" value="${esc(r.bAmt)}" onblur="this.value=formatAmt(this.value); rows[${i}].bAmt=this.value"></td>
+        <td><input type="text" value="${esc(r.aNo)}" oninput="rows[${i}].aNo=this.value"></td>
+        <td><input type="text" value="${esc(r.aName)}" oninput="rows[${i}].aName=this.value"></td>
+        <td><input type="text" value="${esc(r.aAddr)}" oninput="rows[${i}].aAddr=this.value"></td>
+        <td><button class="delbtn" title="Remove row" onclick="removeRow(${i})">✕</button></td>
+      `;
+    } else {
+      tr.innerHTML = `
+        <td class="rowno">${i+1}</td>
+        <td><input type="text" value="${esc(r.ref)}" oninput="rows[${i}].ref=this.value"></td>
+        <td><input type="text" value="${esc(r.date)}" oninput="rows[${i}].date=this.value"></td>
+        <td><input type="text" value="${esc(r.aNo)}" oninput="rows[${i}].aNo=this.value"></td>
+        <td><input type="text" value="${esc(r.aName)}" oninput="rows[${i}].aName=this.value"></td>
+        <td><input type="text" value="${esc(r.address)}" oninput="rows[${i}].address=this.value"></td>
+        <td><input type="text" value="${esc(r.billNo)}" oninput="rows[${i}].billNo=this.value"></td>
+        <td><input type="text" value="${esc(r.amount)}" onblur="this.value=formatAmt(this.value); rows[${i}].amount=this.value"></td>
+        <td><button class="delbtn" title="Remove row" onclick="removeRow(${i})">✕</button></td>
+      `;
     }
+    body.appendChild(tr);
+  });
+  document.getElementById('rowCount').textContent = rows.length + (rows.length===1 ? " notice" : " notices");
+}
 
-    // ---------- DC Exemption ----------
-    // Default the date picker to today
-    document.getElementById("dcDate").value = new Date().toISOString().split("T")[0];
+function esc(s){
+  return (s||"").replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
 
-    function formatDate(d) {
-      return d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+function xmlEscape(str){
+  return (str||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&apos;");
+}
+
+function getSettings(){
+  return {
+    company: val('s_company'),
+    officeTitle: val('s_officeTitle'),
+    subdivision: val('s_subdivision'),
+    circle: val('s_circle'),
+    email: val('s_email'),
+    refprefix: val('s_refprefix'),
+    subject: val('s_subject'),
+    copyto: val('s_copyto'),
+    signblock: val('s_signblock').split('|').map(x=>x.trim()).filter(Boolean)
+  };
+}
+function val(id){ return document.getElementById(id).value; }
+
+function letterHTML(row, s, copyLabel){
+  const fullRef = s.refprefix + row.ref;
+  const signLines = s.signblock.map(l=>`<div class="lh">${esc(l)}</div>`).join("");
+  
+  let consumerBlock = "";
+  let bodyPara = "";
+
+  if(mode === 'MDC'){
+    consumerBlock = `<div class="lh">(A) ${esc(row.aName)},</div>
+                     <div class="lh" style="padding-left: 24px;">Cons. no ${esc(row.aNo)}  ${esc(row.aAddr)}</div>
+                     <div class="lh">(B) ${esc(row.bName)}, Cons. No. ${esc(row.bNo)}</div>
+                     <div class="lh" style="padding-left: 24px;">${row.bAmt ? `AMOUNT RS. ${esc(row.bAmt).replace('₹ ','')}, ` : ``}${esc(row.bAddr)}</div>`;
+                     
+    bodyPara = `With reference to the subject cited above, I would like to inform you that against multiple connections, as mentioned above, arrear amounts accumulated against connection (B) shall be henceforth added as arrear outstanding of consumer (A) in accordance with <span style="text-decoration:underline;">regulation 6.3.17</span> of the AERC regulations within 15 days if unpaid within the said date. The same has been initiated as multiple connections are found in the same premises against different names and are found to be defaulting in dues. Furthermore, disconnection of power supply as per <span style="text-decoration:underline;">regulation 8.2.2</span> of AERC regulations will be done for active connections (A) within 15 days of issue of this letter if payment is not made within due date. The entire added amount shall be treated at par as principal amount henceforth. You may approach the undersigned within 15 days of issue of this notice in case of any objections/ clarifications.`;
+  } else {
+    consumerBlock = `<div class="lh">(A) ${esc(row.aName)}, Cons. no. ${esc(row.aNo)}</div>
+                     <div class="lh" style="padding-left: 24px;"><b>${esc(row.address)}</b></div>
+                     <div class="lh">(B) ASSESSMENT BILL NO: ${esc(row.billNo)}, AMOUNT ${esc(row.amount)}</div>`;
+                     
+    bodyPara = `With reference to the subject cited above, I would like to inform you that, as mentioned above, amounts against assessment bill (B) shall be henceforth added as arrear outstanding of consumer (A) in accordance with <span style="text-decoration:underline;">regulation 6.3.17</span> of the AERC regulations within 15 days if unpaid within the said date. The same has been initiated as multiple connections are found in the same premises against different names and are found to be defaulting in dues. Furthermore, disconnection of power supply as per <span style="text-decoration:underline;">regulation 8.2.2</span> of AERC regulations will be done for active connections (A) within 15 days of issue of this letter if payment is not made within due date. The entire added amount shall be treated at par as principal amount henceforth. You may approach the undersigned within 15 days of issue of this notice in case of any objections/ clarifications.`;
+  }
+
+  const copyToHtml = s.copyto.split(/\r?\n/).filter(l=>l.trim().length>0).map(l => `<div class="lh" style="padding-left: 24px; text-indent: -24px;">${esc(l)}</div>`).join('');
+
+  return `
+  <div class="sheet">
+    <span class="copy-label">${copyLabel}</span>
+    <div class="center bold" style="font-size:14.5px;letter-spacing:.3px;">${esc(s.company)}</div>
+    <div class="lh center">${esc(s.officeTitle)}</div>
+    <div class="lh center bold"><span style="text-decoration:underline;">${esc(s.subdivision)}</span></div>
+    <div class="lh center bold">${esc(s.circle)}</div>
+    
+    <div class="center lh small" style="margin-bottom:4px; font-weight:bold;">e-mail: ${esc(s.email)}</div>
+    <div style="border-top:1px solid #000; margin-bottom:4px;"></div>
+    
+    <div style="display:flex; justify-content:space-between; font-size:11.5px; font-weight:bold; margin-bottom:14px;">
+      <span>No. ${esc(fullRef)}</span>
+      <span>DT. ${esc(row.date)}</span>
+    </div>
+
+    <div style="height:10px;"></div>
+    <div class="lh bold">To,</div>
+    ${consumerBlock}
+
+    <div style="height:10px;"></div>
+    <div class="lh bold"><span style="text-decoration:underline;">Sub</span>: ${esc(s.subject)}</div>
+    <div style="height:8px;"></div>
+    <div class="lh">Sir/Madam,</div>
+
+    <p style="text-indent:24px;">${bodyPara}</p>
+    <p style="text-indent:24px;">This is for your information and necessary action.</p>
+
+    <div class="lh" style="margin-top:6px; padding-left: 55%;">Sincerely,</div>
+    <div style="height:34px;"></div>
+    <div style="padding-left: 50%; text-align: center;">${signLines}</div>
+
+    ${copyLabel === "Original" ? `
+    <hr class="divider">
+    <div style="display:flex; justify-content:space-between; font-size:11.5px; font-weight:bold; margin-bottom:6px;">
+      <span>No. ${esc(fullRef)}</span>
+      <span>DT. ${esc(row.date)}</span>
+    </div>
+    <div class="lh"><span style="text-decoration:underline;">Copy for favour of kind information to</span>:</div>
+    ${copyToHtml}
+    <div style="height:34px;"></div>
+    <div style="padding-left: 50%; text-align: center;">${signLines}</div>
+    ` : ``}
+  </div>`;
+}
+
+function renderPreview(){
+  if(rows.length===0){
+    document.getElementById('previewArea').innerHTML = '<div class="empty-state">No rows yet — add consumer data above first.</div>';
+    document.getElementById('printArea').innerHTML = "";
+    return;
+  }
+  const s = getSettings();
+  let html = "";
+  let printHtml = "";
+  rows.forEach(r=>{
+    html += letterHTML(r, s, "Original");
+    printHtml += letterHTML(r, s, "Original");
+  });
+  document.getElementById('previewArea').innerHTML = html;
+  document.getElementById('printArea').innerHTML = printHtml;
+}
+
+function printLetters(){
+  if(rows.length===0){ alert("Add consumer data and click Generate Letters first."); return; }
+  renderPreview();
+  setTimeout(()=>window.print(), 100);
+}
+
+function createDocxRun(text, underline = false, addTab = false) {
+  let xml = '<w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:sz w:val="20"/></w:rPr>';
+  if (underline) xml = xml.replace('</w:rPr>', '<w:u w:val="single"/></w:rPr>');
+  if (addTab) xml += '<w:tab/>';
+  xml += '<w:t xml:space="preserve">' + xmlEscape(text) + '</w:t></w:r>';
+  return xml;
+}
+
+function fillLetterXml(row, s){
+  let b = DOCX_PARTS.PART_BODY;
+  const sign = s.signblock;
+  
+  let consALine = "";
+  let consBLine = "";
+  let mainBodyXml = "";
+  
+  if(mode === 'MDC'){
+    // Removed <w:tab/> entirely after <w:br/> to prevent the huge gap
+    consALine = `(A)</w:t></w:r><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:b/><w:sz w:val="20"/></w:rPr><w:tab/><w:t xml:space="preserve">${xmlEscape(row.aName)},</w:t></w:r><w:r><w:br/></w:r><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:b/><w:sz w:val="20"/></w:rPr><w:t xml:space="preserve">Cons. no ${xmlEscape(row.aNo)} ${xmlEscape(row.aAddr)}`;
+    
+    let bAmtStr = row.bAmt ? `AMOUNT RS. ${xmlEscape(row.bAmt).replace('₹ ','')}, ` : ``;
+    
+    consBLine = `(B)</w:t></w:r><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:b/><w:sz w:val="20"/></w:rPr><w:tab/><w:t xml:space="preserve">${xmlEscape(row.bName)}, Cons. No. ${xmlEscape(row.bNo)}</w:t></w:r><w:r><w:br/></w:r><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:b/><w:sz w:val="20"/></w:rPr><w:t xml:space="preserve">${bAmtStr}${xmlEscape(row.bAddr)}`;
+    
+    mainBodyXml = createDocxRun("With reference to the subject cited above, I would like to inform you that against multiple connections, as mentioned above, arrear amounts accumulated against connection (B) shall be henceforth added as arrear outstanding of consumer (A) in accordance with ", false, true) + 
+                  createDocxRun("regulation 6.3.17", true) +
+                  createDocxRun(" of the AERC regulations within 15 days if unpaid within the said date. The same has been initiated as multiple connections are found in the same premises against different names and are found to be defaulting in dues. Furthermore, disconnection of power supply as per ", false) +
+                  createDocxRun("regulation 8.2.2", true) +
+                  createDocxRun(" of AERC regulations will be done for active connections (A) within 15 days of issue of this letter if payment is not made within due date. The entire added amount shall be treated at par as principal amount henceforth. You may approach the undersigned within 15 days of issue of this notice in case of any objections/ clarifications.", false);
+  } else {
+    // Removed <w:tab/> entirely after <w:br/> to prevent the huge gap
+    consALine = `(A)</w:t></w:r><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:b/><w:sz w:val="20"/></w:rPr><w:tab/><w:t xml:space="preserve">${xmlEscape(row.aName)}, Cons. no. ${xmlEscape(row.aNo)}</w:t></w:r><w:r><w:br/></w:r><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:b/><w:sz w:val="20"/></w:rPr><w:t xml:space="preserve">${xmlEscape(row.address)}`;
+    
+    consBLine = `(B)</w:t></w:r><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:b/><w:sz w:val="20"/></w:rPr><w:tab/><w:t xml:space="preserve">ASSESSMENT BILL NO: ${xmlEscape(row.billNo)}, AMOUNT ${xmlEscape(row.amount)}`;
+    
+    mainBodyXml = createDocxRun("With reference to the subject cited above, I would like to inform you that, as mentioned above, amounts against assessment bill (B) shall be henceforth added as arrear outstanding of consumer (A) in accordance with ", false, true) + 
+                  createDocxRun("regulation 6.3.17", true) +
+                  createDocxRun(" of the AERC regulations within 15 days if unpaid within the said date. The same has been initiated as multiple connections are found in the same premises against different names and are found to be defaulting in dues. Furthermore, disconnection of power supply as per ", false) +
+                  createDocxRun("regulation 8.2.2", true) +
+                  createDocxRun(" of AERC regulations will be done for active connections (A) within 15 days of issue of this letter if payment is not made within due date. The entire added amount shall be treated at par as principal amount henceforth. You may approach the undersigned within 15 days of issue of this notice in case of any objections/ clarifications.", false);
+  }
+
+  const copyLines = s.copyto.split(/\r?\n/).filter(l => l.trim().length > 0);
+  let copyXml = "";
+  copyLines.forEach(line => {
+    copyXml += `<w:p><w:pPr><w:spacing w:line="240" w:lineRule="auto"/><w:ind w:left="720" w:hanging="360"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:sz w:val="20"/></w:rPr><w:t>${xmlEscape(line)}</w:t></w:r></w:p>`;
+  });
+
+  const COPY_BLOCK = `<w:p><w:pPr><w:tabs><w:tab w:val="right" w:pos="9026"/></w:tabs><w:spacing w:before="60" w:after="120"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:b/><w:sz w:val="18"/></w:rPr><w:t>No. {{REFPREFIX}}{{REF}}</w:t></w:r><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:b/><w:sz w:val="18"/></w:rPr><w:tab/><w:t>DT. {{DATE}}</w:t></w:r></w:p><w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:u w:val="single"/><w:sz w:val="20"/></w:rPr><w:t>Copy for favour of kind information to</w:t></w:r><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:sz w:val="20"/></w:rPr><w:t>:</w:t></w:r></w:p>${copyXml}<w:p><w:pPr><w:spacing w:line="240" w:lineRule="auto"/><w:ind w:left="6480"/></w:pPr></w:p><w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:ind w:left="5760"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:b/><w:sz w:val="20"/></w:rPr><w:t>{{SIGN1}}</w:t></w:r></w:p><w:p><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/><w:ind w:left="5760"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:b/><w:sz w:val="20"/></w:rPr><w:t>{{SIGN2}}</w:t></w:r></w:p><w:p><w:pPr><w:spacing w:line="240" w:lineRule="auto"/><w:ind w:left="5760"/><w:jc w:val="center"/></w:pPr><w:r><w:rPr><w:rFonts w:ascii="Bookman Old Style" w:hAnsi="Bookman Old Style"/><w:b/><w:sz w:val="20"/></w:rPr><w:t>{{SIGN3}}</w:t></w:r></w:p>`;
+  
+  b = b.replace('{{COPY_TO_BLOCK}}', COPY_BLOCK);
+
+  const map = {
+    '{{COMPANY}}': s.company,
+    '{{OFFICE_TITLE}}': s.officeTitle,
+    '{{SUBDIVISION}}': s.subdivision,
+    '{{CIRCLE}}': s.circle,
+    '{{EMAIL}}': s.email,
+    '{{REFPREFIX}}': s.refprefix,
+    '{{REF}}': row.ref,
+    '{{DATE}}': row.date,
+    '{{CONSUMER_A_LINE}}': consALine, 
+    '{{CONSUMER_B_LINE}}': consBLine,
+    '{{SUBJECT}}': s.subject,
+    '{{MAIN_BODY}}': mainBodyXml,     
+    '{{SIGN1}}': sign[0]||"",
+    '{{SIGN2}}': sign[1]||"",
+    '{{SIGN3}}': sign[2]||""
+  };
+  
+  for(const k in map){
+    let val = map[k];
+    if(k !== '{{CONSUMER_A_LINE}}' && k !== '{{CONSUMER_B_LINE}}' && k !== '{{MAIN_BODY}}') {
+      val = xmlEscape(val);
     }
+    b = b.split(k).join(val);
+  }
+  return b;
+}
 
-    function generateDcMessage() {
-      const consumerNo = document.getElementById("dcConsumer").value.trim();
-      let days = parseInt(document.getElementById("dcDays").value, 10);
-      const fromDateStr = document.getElementById("dcDate").value;
+async function downloadRealDocx(){
+  if(rows.length===0){ alert("Add consumer data and click Generate Letters first."); return; }
+  if(typeof JSZip === 'undefined'){
+    alert("Could not load the document engine (JSZip) — check your internet connection and try again.");
+    return;
+  }
+  const s = getSettings();
+  const PAGE_BREAK = '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
+  const allLetters = rows.map(r=>fillLetterXml(r, s)).join(PAGE_BREAK);
+  const fullXml = DOCX_PARTS.PART_HEADER + allLetters + DOCX_PARTS.PART_SECT + '</w:body></w:document>';
 
-      if (!consumerNo) { alert("Please enter Consumer No."); return; }
-      if (!fromDateStr) { alert("Please select a From Date."); return; }
-      if (isNaN(days) || days < 1) days = 1;
-      if (days > 30) {
-        days = 30;
-        document.getElementById("dcDays").value = 30;
-        alert("Max DC exemption is 30 days — capped to 30.");
-      }
+  const zip = new JSZip();
+  zip.file('[Content_Types].xml', DOCX_PARTS.CONTENT_TYPES);
+  zip.file('_rels/.rels', DOCX_PARTS.RELS_ROOT);
+  zip.file('word/_rels/document.xml.rels', DOCX_PARTS.DOC_RELS);
+  zip.file('word/document.xml', fullXml);
+  zip.file('word/styles.xml', DOCX_PARTS.STYLES);
+  zip.file('word/theme/theme1.xml', DOCX_PARTS.THEME1);
+  zip.file('word/settings.xml', DOCX_PARTS.SETTINGS);
+  zip.file('word/webSettings.xml', DOCX_PARTS.WEBSETTINGS);
+  zip.file('word/numbering.xml', DOCX_PARTS.NUMBERING);
+  zip.file('word/fontTable.xml', DOCX_PARTS.FONTTABLE);
+  zip.file('docProps/core.xml', DOCX_PARTS.CORE);
+  zip.file('docProps/app.xml', DOCX_PARTS.APP);
 
-      const fromDate = new Date(fromDateStr + "T00:00:00");
-      const toDate = new Date(fromDate);
-      toDate.setDate(toDate.getDate() + (days - 1));
+  const blob = await zip.generateAsync({
+    type:'blob',
+    mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = `APDCL_Notices_${mode}.docx`;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
 
-      const msg = `Requesting DC (Disconnection) exemption for Consumer No. ${consumerNo} for ${days} day(s), effective from ${formatDate(fromDate)} to ${formatDate(toDate)}. Kindly grant the exemption to avoid disconnection.`;
+function clearAll(){
+  if(rows.length===0) return;
+  if(confirm("Remove all "+rows.length+" row(s)? This cannot be undone.")){
+    rows = [];
+    renderTable();
+    document.getElementById('previewArea').innerHTML = '<div class="empty-state">Add consumer rows above, then click "Generate Letters" to preview them here.</div>';
+    document.getElementById('printArea').innerHTML = "";
+  }
+}
 
-      document.getElementById("dcOutput").value = msg;
-    }
-
-    function copyDcMessage() {
-      const output = document.getElementById("dcOutput");
-      output.select();
-      document.execCommand("copy");
-      alert("Message copied to clipboard!");
-    }
-
-    function saveDcMessage() {
-      const message = document.getElementById("dcOutput").value.trim();
-      if (!message) {
-        alert("Please generate a message before saving.");
-        return;
-      }
-      const consumerNo = document.getElementById("dcConsumer").value.trim();
-      const days = document.getElementById("dcDays").value;
-      const fromDate = document.getElementById("dcDate").value;
-      const incidentNo = document.getElementById("dcIncidentNo").value.trim();
-
-      if (!incidentNo) {
-        alert("Please enter an Incident Number.");
-        return;
-      }
-
-      postToSheet({
-        type: "dc_exemption",
-        consumerNo,
-        days,
-        fromDate,
-        incidentNo,
-        message
-      })
-      .then(data => {
-        if (data.result === "Success") {
-          alert("DC Exemption message saved! Check the DC_Exemption sheet tab.");
-          addToList("dcMessageList", `Incident No: ${incidentNo} — ${message}`);
-        } else {
-          alert("Server error: " + (data.message || "Unknown error"));
-        }
-      })
-      .catch(err => alert("Error: " + err.message));
-    }
-  </script>
+// start with one blank row so the table isn't empty
+setMode('MDC');
+</script>
 
 </body>
 </html>
