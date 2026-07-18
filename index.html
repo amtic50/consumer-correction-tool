@@ -121,11 +121,13 @@
     <hr/>
 
     <h2>Bulk Paste</h2>
+    <a href="sample-template.xlsx" download style="display:inline-block; width:auto; margin-top:10px; padding:8px 14px; background:#2ecc71; color:#fff; text-decoration:none; border-radius:4px; font-size:14px;">📥 Download Sample XLSX Template</a>
     <small>
-      Paste data copied from Excel/Sheets, <b>including the header row</b>. Recognized header words:
+      Fill in the template, then select and copy your rows <b>including the header row</b> and paste below. Recognized header words:
       Correct Consumer, Wrong Consumer, Correct Meter, Wrong Meter, Incident no., Sub-Div, Slr No.
       Missing columns are fine — just leave them out or leave cells blank.<br/>
       To mark "no smart meter installed", type <b>NA</b> / <b>no meter</b> / <b>nil</b> in the Correct Meter cell for that row.
+      Hover over header cells in the template for full instructions.
     </small>
     <textarea id="bulkInput" rows="8" placeholder="Paste header row + data rows here..."></textarea>
     <button onclick="parseBulk()">🔍 Parse Pasted Data</button>
@@ -133,8 +135,24 @@
 
     <div id="bulkResultsWrap" style="display:none;">
       <h3>Parsed Messages</h3>
-      <label>Incident No. (used for rows without their own):</label>
-      <input type="text" id="bulkIncidentNo" placeholder="e.g., INC12345" />
+
+      <label>Incident Number Mode:</label>
+      <div style="display:flex; gap:20px; margin-top:6px;">
+        <label style="width:auto; display:flex; align-items:center; gap:6px; font-size:14px;">
+          <input type="radio" name="incidentMode" value="single" checked onchange="updateIncidentMode('single')" style="width:auto; margin:0;" />
+          One Incident No. for the whole batch
+        </label>
+        <label style="width:auto; display:flex; align-items:center; gap:6px; font-size:14px;">
+          <input type="radio" name="incidentMode" value="multiple" onchange="updateIncidentMode('multiple')" style="width:auto; margin:0;" />
+          Different Incident No. per row
+        </label>
+      </div>
+
+      <div id="singleIncidentWrap">
+        <label>Incident No. (applies to all selected rows):</label>
+        <input type="text" id="bulkIncidentNo" placeholder="e.g., INC12345" />
+      </div>
+
       <div id="bulkResults"></div>
       <button onclick="saveBulkSelected()">💾 Save Selected Messages</button>
     </div>
@@ -266,27 +284,70 @@
       return ["na", "n/a", "no meter", "nil", "none", "-"].includes(v);
     }
 
-    function buildMessageForRecord(rec) {
+    // Multiple phrasings so a batch of messages doesn't read as copy-pasted.
+    const correctionTemplates = [
+      (cm, cc, wc, wm) => {
+        let m = `${cm} was originally installed under Consumer No. ${cc}`;
+        m += wc ? ` but has been erroneously updated to Consumer No. ${wc}.` : `.`;
+        if (wm) m += ` Kindly note that the old meter (${wm}) is still installed under Consumer No. ${wc || cc}.`;
+        m += ` Requesting necessary correction at the earliest to avoid discrepancies.`;
+        return m;
+      },
+      (cm, cc, wc, wm) => {
+        let m = `Meter ${cm} belongs to Consumer No. ${cc}`;
+        m += wc ? `, however it currently reflects under Consumer No. ${wc} by mistake.` : `, however the current tagging appears incorrect.`;
+        if (wm) m += ` Also, meter ${wm} continues to remain installed under Consumer No. ${wc || cc}.`;
+        m += ` Please carry out the correction at the earliest to avoid billing discrepancies.`;
+        return m;
+      },
+      (cm, cc, wc, wm) => {
+        let m = `This is regarding Consumer No. ${cc}, whose correct meter is ${cm}.`;
+        if (wc) m += ` It has been wrongly mapped to Consumer No. ${wc}.`;
+        if (wm) m += ` The meter physically installed at Consumer No. ${wc || cc} is ${wm}, which needs correction.`;
+        m += ` Kindly rectify this tagging issue at the earliest.`;
+        return m;
+      },
+      (cm, cc, wc, wm) => {
+        let m = `Requesting correction of meter tagging: ${cm} should be mapped to Consumer No. ${cc}`;
+        m += wc ? `, not Consumer No. ${wc} as it currently stands.` : `.`;
+        if (wm) m += ` Additionally, meter ${wm} remains installed under Consumer No. ${wc || cc} and needs attention.`;
+        m += ` Kindly resolve at the earliest.`;
+        return m;
+      }
+    ];
+
+    const noMeterTemplates = [
+      cc => `No smart meter is installed for Consumer No. ${cc}. Kindly arrange installation/tagging of a smart meter at the earliest.`,
+      cc => `Consumer No. ${cc} currently has no smart meter installed. Requesting installation of a smart meter at the earliest.`,
+      cc => `Please note that Consumer No. ${cc} does not have a smart meter tagged. Kindly arrange for installation soon.`,
+      cc => `This is to bring to notice that no smart meter is presently tagged against Consumer No. ${cc}. Requesting installation at the earliest.`
+    ];
+
+    function buildMessageForRecord(rec, variantIdx) {
       const correctCons = rec.correctCons || "";
       const wrongCons = rec.wrongCons || "";
       const correctMeter = rec.correctMeter || "";
-      const wrongMeter = rec.wrongMeter || "";
+      const wrongMeter = (rec.wrongMeter && !isNoMeterKeyword(rec.wrongMeter)) ? rec.wrongMeter : "";
 
       if (isNoMeterKeyword(correctMeter)) {
-        return {
-          noMeter: true,
-          text: `No smart meter is installed for Consumer No. ${correctCons}. Kindly arrange installation/tagging of a smart meter at the earliest.`
-        };
+        const idx = variantIdx !== undefined ? variantIdx % noMeterTemplates.length : Math.floor(Math.random() * noMeterTemplates.length);
+        return { noMeter: true, variantIdx: idx, text: noMeterTemplates[idx](correctCons) };
       }
+      const idx = variantIdx !== undefined ? variantIdx % correctionTemplates.length : Math.floor(Math.random() * correctionTemplates.length);
+      return { noMeter: false, variantIdx: idx, text: correctionTemplates[idx](correctMeter, correctCons, wrongCons, wrongMeter) };
+    }
 
-      let msg = `${correctMeter} was originally installed under Consumer No. ${correctCons}`;
-      msg += wrongCons ? ` but has been erroneously updated to Consumer No. ${wrongCons}.` : `.`;
-
-      if (wrongMeter && !isNoMeterKeyword(wrongMeter)) {
-        msg += ` Kindly note that the old meter (${wrongMeter}) is still installed under Consumer No. ${wrongCons || correctCons}.`;
+    function rewordRow(idx) {
+      const rec = bulkRecords[idx];
+      const pool = rec.noMeter ? noMeterTemplates : correctionTemplates;
+      let nextVariant = Math.floor(Math.random() * pool.length);
+      if (pool.length > 1) {
+        while (nextVariant === rec.variantIdx) nextVariant = Math.floor(Math.random() * pool.length);
       }
-      msg += ` Requesting necessary correction at the earliest to avoid discrepancies.`;
-      return { noMeter: false, text: msg };
+      const built = buildMessageForRecord(rec, nextVariant);
+      rec.text = built.text;
+      rec.variantIdx = built.variantIdx;
+      renderBulkResults();
     }
 
     function parseBulk() {
@@ -322,6 +383,7 @@
           incidentNo: rec.incidentNo || "",
           text: built.text,
           noMeter: built.noMeter,
+          variantIdx: built.variantIdx,
           selected: true
         });
       }
@@ -335,17 +397,29 @@
       document.getElementById("bulkResultsWrap").style.display = "block";
     }
 
+    let bulkIncidentMode = "single";
+
+    function updateIncidentMode(mode) {
+      bulkIncidentMode = mode;
+      document.getElementById("singleIncidentWrap").style.display = mode === "single" ? "block" : "none";
+      renderBulkResults();
+    }
+
     function renderBulkResults() {
       const wrap = document.getElementById("bulkResults");
       wrap.innerHTML = "";
       bulkRecords.forEach((rec, idx) => {
         const div = document.createElement("div");
         div.className = "bulk-row" + (rec.noMeter ? " no-meter" : "");
+        const incidentField = bulkIncidentMode === "multiple"
+          ? `<input type="text" placeholder="Incident No. (required)" value="${rec.incidentNo}" onchange="bulkRecords[${idx}].incidentNo=this.value" />`
+          : "";
         div.innerHTML = `
           <textarea onchange="bulkRecords[${idx}].text=this.value">${rec.text}</textarea>
           <div class="bulk-row-meta">
             <label><input type="checkbox" ${rec.selected ? "checked" : ""} onchange="bulkRecords[${idx}].selected=this.checked" /> Include</label>
-            <input type="text" placeholder="Incident No. (optional, else uses field above)" value="${rec.incidentNo}" onchange="bulkRecords[${idx}].incidentNo=this.value" />
+            <button type="button" style="width:auto; margin-top:0; padding:6px 10px;" onclick="rewordRow(${idx})">🔀 Reword</button>
+            ${incidentField}
           </div>
         `;
         wrap.appendChild(div);
@@ -353,7 +427,6 @@
     }
 
     async function saveBulkSelected() {
-      const fallbackIncident = document.getElementById("bulkIncidentNo").value.trim();
       const toSave = bulkRecords.filter(r => r.selected);
 
       if (toSave.length === 0) {
@@ -361,11 +434,26 @@
         return;
       }
 
+      let sharedIncident = "";
+      if (bulkIncidentMode === "single") {
+        sharedIncident = document.getElementById("bulkIncidentNo").value.trim();
+        if (!sharedIncident) {
+          alert("Please enter the Incident No. for the batch.");
+          return;
+        }
+      } else {
+        const missing = toSave.some(r => !r.incidentNo || !r.incidentNo.trim());
+        if (missing) {
+          alert("Every selected row needs its own Incident No. in 'Different Incident No. per row' mode.");
+          return;
+        }
+      }
+
       let successCount = 0;
       let failCount = 0;
 
       for (const rec of toSave) {
-        const incidentNo = (rec.incidentNo || fallbackIncident).trim();
+        const incidentNo = (bulkIncidentMode === "single" ? sharedIncident : rec.incidentNo).trim();
         if (!incidentNo) {
           failCount++;
           continue;
